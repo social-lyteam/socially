@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  
+  <!-- Disable zooming -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  
+  <title>social.ly</title>
+
+  <!-- App Icon -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- Load Facebook SDK -->
+  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Initialize Facebook SDK -->
+  <script>
+    window.fbAsyncInit = function() {
+      FB.init({
+        appId      : '1175981624005514', // Your Facebook App ID
+        cookie     : true,
+        xfbml      : true,
+        version    : 'v18.0'
+      });
+      FB.AppEvents.logPageView();
+    };
+  </script>
+
+  <header>
+    <img src="favicon.png" alt="social.ly Logo" class="app-logo">
+  </header>
+
+  <main>
+    <section id="search">
+      <button onclick="loginWithFacebook()" class="facebook-login-button">Login with Facebook</button>
+      <br/><br/>
+      <input type="datetime-local" id="datetime" />
+      <input type="text" id="location" placeholder="Enter a city" />
+      <button onclick="searchEvents()">Search Events</button>
+    </section>
+
+    <section id="results"></section>
+
+    <footer>
+      <button onclick="window.location.href='privacy.html'" class="footer-button">Privacy Policy</button>
+      <button onclick="window.location.href='data-deletion.html'" class="footer-button">Data Deletion Instructions</button>
+      <button onclick="window.location.href='terms.html'" class="footer-button">Terms of Service</button>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

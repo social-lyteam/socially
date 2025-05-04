@@ -1,0 +1,114 @@
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f0f2f5;
+  text-align: center;
+}
+
+header {
+  background: #3498db;
+  color: white;
+  padding: 20px;
+  font-size: 2em;
+}
+
+/* Small Logo in header */
+.app-logo {
+  width: 40px; /* Small, about same as text height */
+  height: auto;
+  margin: 10px auto;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+#search {
+  margin: 20px;
+}
+
+#datetime, #location {
+  padding: 10px;
+  margin: 5px;
+  width: 250px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #3498db;
+  color: white;
+  font-size: 1em;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button:hover {
+  background: #2980b9;
+}
+
+.facebook-login-button {
+  background-color: #4267B2;
+  color: white;
+  font-size: 1em;
+  padding: 10px 20px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.facebook-login-button:hover {
+  background-color: #365899;
+}
+
+#results {
+  margin-top: 30px;
+  padding: 20px;
+}
+
+.event-card {
+  background-color: #ffffff;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 15px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.event-card:hover {
+  transform: scale(1.02);
+}
+
+.event-card img {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+/* Footer buttons */
+footer {
+  margin-top: 40px;
+  padding: 20px;
+}
+
+.footer-button {
+  background-color: #f1f1f1;
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 10px 20px;
+  margin: 5px;
+  border-radius: 8px;
+  font-size: 1em;
+  cursor: pointer;
+}
+
+.footer-button:hover {
+  background-color: #ddd;
+}
