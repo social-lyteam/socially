@@ -1,192 +1,79 @@
 import express from 'express';
 import cors from 'cors';
-import fetch from 'node-fetch';
-import fs from 'fs';
+import { createClient } from '@supabase/supabase-js';
 
 const app = express();
 const PORT = 3000;
 
-const TICKETMASTER_API_KEY = 'mPLzpIXal7XLK2mMxFTQgaPOEQMiGRAY';
-const EVENTBRITE_PRIVATE_TOKEN = 'MQACFPLSFF6ATDLQ3YJV';
-const GOOGLE_API_KEY = 'AIzaSyA42IF4OTsvdq0kaUiaCxxqLXqPgEECcng';
+// Your Supabase credentials
+const SUPABASE_URL = 'https://qbnwppkarszzhuxsgnxw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // truncated here
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 app.use(cors());
 app.use(express.json());
 
-// Files for simple storage
-const FAVORITES_FILE = './favorites.json';
-const USERS_FILE = './users.json';
-
-function loadJSON(file) {
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return {};
-  }
-}
-
-function saveJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
-}
-
 app.get('/', (req, res) => {
-  res.send('✅ API running');
+  res.send('✅ Supabase-connected API is running');
 });
 
-// Login / Signup
-app.post('/api/signup', (req, res) => {
+// SIGN UP
+app.post('/api/signup', async (req, res) => {
   const { email, password } = req.body;
-  const users = loadJSON(USERS_FILE);
-  if (users[email]) return res.json({ message: 'User already exists' });
-  users[email] = { password };
-  saveJSON(USERS_FILE, users);
-  res.json({ message: 'Account created!' });
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Account created!', user: data.user });
 });
 
-app.post('/api/login', (req, res) => {
+// LOGIN
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
-  const users = loadJSON(USERS_FILE);
-  if (!users[email]) return res.json({ message: 'User not found' });
-  if (users[email].password !== password) return res.json({ message: 'Wrong password' });
-  res.json({ message: `Welcome back, ${email}!` });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: `Welcome back, ${email}`, user: data.user });
 });
 
-app.post('/api/login-facebook', (req, res) => {
+// LOGIN WITH FACEBOOK
+app.post('/api/login-facebook', async (req, res) => {
   const { id, name, email } = req.body;
-  const users = loadJSON(USERS_FILE);
-  if (!users[email]) {
-    users[email] = { facebookId: id, name };
-    saveJSON(USERS_FILE, users);
-  }
+  const { data, error } = await supabase
+    .from('users')
+    .upsert([{ email, name, provider: 'facebook' }], { onConflict: ['email'] });
+
+  if (error) return res.status(400).json({ error: error.message });
   res.json({ message: `Logged in as ${name}` });
 });
 
-// Favorites
-app.post('/api/favorites', (req, res) => {
+// SAVE FAVORITE
+app.post('/api/favorites', async (req, res) => {
   const { userId, item, type } = req.body;
-  if (!userId || !item || !type) return res.status(400).json({ error: 'Missing required fields' });
+  if (!userId || !item || !type) return res.status(400).json({ error: 'Missing fields' });
 
-  const data = loadJSON(FAVORITES_FILE);
-  if (!data[userId]) data[userId] = { events: [], places: [] };
-  const list = data[userId][type === 'place' ? 'places' : 'events'];
+  const { data, error } = await supabase
+    .from('favorites')
+    .insert([{ user_id: userId, type, data: item }]);
 
-  if (!list.some(fav => fav.name === item.name)) {
-    list.push(item);
-    saveJSON(FAVORITES_FILE, data);
-  }
-
+  if (error) return res.status(400).json({ error: error.message });
   res.json({ success: true });
 });
 
-app.get('/api/favorites', (req, res) => {
+// LOAD FAVORITES
+app.get('/api/favorites', async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
-  const data = loadJSON(FAVORITES_FILE);
-  res.json(data[userId] || { events: [], places: [] });
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  const events = data.filter(f => f.type === 'event').map(f => f.data);
+  const places = data.filter(f => f.type === 'place').map(f => f.data);
+  res.json({ events, places });
 });
-
-// Events
-app.get('/api/events', async (req, res) => {
-  const { city, date } = req.query;
-  if (!city || !date) return res.status(400).json({ error: 'Missing city or date' });
-
-  try {
-    const [tm, eb] = await Promise.all([
-      fetchTicketmasterEvents(city, date),
-      fetchEventbriteEvents(city, date),
-    ]);
-    res.json({ events: [...tm, ...eb] });
-  } catch (e) {
-    console.error('Event fetch error:', e);
-    res.status(500).json({ error: 'Failed to fetch events' });
-  }
-});
-
-// Places
-app.get('/api/places', async (req, res) => {
-  const { city, datetime } = req.query;
-  if (!city || !datetime) return res.status(400).json({ error: 'Missing city or datetime' });
-
-  try {
-    const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(city)}&key=${GOOGLE_API_KEY}`);
-    const geoData = await geoRes.json();
-    if (!geoData.results.length) return res.status(404).json({ error: 'City not found' });
-
-    const { lat, lng } = geoData.results[0].geometry.location;
-    const types = ['park', 'restaurant', 'bar'];
-    const places = [];
-    const excludedTypes = ['gas_station', 'meal_takeaway', 'convenience_store', 'fast_food'];
-
-    for (const type of types) {
-      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${type}&opennow=true&key=${GOOGLE_API_KEY}`;
-      const resPlaces = await fetch(url);
-      const data = await resPlaces.json();
-
-      if (data.results?.length) {
-        const filtered = data.results
-          .filter(p => !excludedTypes.some(ex => p.types?.includes(ex)))
-          .map(p => ({
-            name: p.name,
-            type,
-            address: p.vicinity || '',
-            rating: p.rating || null,
-            photo: p.photos?.[0]
-              ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_API_KEY}`
-              : '',
-          }));
-        places.push(...filtered);
-      }
-    }
-
-    res.json({ places });
-  } catch (e) {
-    console.error('Place fetch error:', e);
-    res.status(500).json({ error: 'Failed to fetch places' });
-  }
-});
-
-async function fetchEventbriteEvents(city, date) {
-  const url = `https://www.eventbriteapi.com/v3/events/search/?location.address=${encodeURIComponent(city)}&start_date.range_start=${date}T00:00:00Z&start_date.range_end=${date}T23:59:59Z`;
-
-  try {
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${EVENTBRITE_PRIVATE_TOKEN}` },
-    });
-    if (!response.ok) return [];
-    const data = await response.json();
-    return (data.events || []).map(event => ({
-      source: 'Eventbrite',
-      name: event.name?.text,
-      date: event.start?.local.split('T')[0],
-      venue: event.venue_id || 'Unknown Venue',
-      url: event.url,
-      image: event.logo?.url || '',
-    }));
-  } catch {
-    return [];
-  }
-}
-
-async function fetchTicketmasterEvents(city, date) {
-  const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&city=${encodeURIComponent(city)}&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data._embedded?.events || []).map(event => ({
-      source: 'Ticketmaster',
-      name: event.name,
-      date: event.dates.start.localDate,
-      venue: event._embedded.venues[0]?.name,
-      url: event.url,
-      image: event.images[0]?.url || '',
-    }));
-  } catch {
-    return [];
-  }
-}
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
