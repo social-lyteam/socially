@@ -1,11 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
+import fs from 'fs';
 
 const app = express();
 const PORT = 3000;
 
-// API keys
 const TICKETMASTER_API_KEY = 'mPLzpIXal7XLK2mMxFTQgaPOEQMiGRAY';
 const EVENTBRITE_PRIVATE_TOKEN = 'MQACFPLSFF6ATDLQ3YJV';
 const GOOGLE_API_KEY = 'AIzaSyA42IF4OTsvdq0kaUiaCxxqLXqPgEECcng';
@@ -13,11 +13,80 @@ const GOOGLE_API_KEY = 'AIzaSyA42IF4OTsvdq0kaUiaCxxqLXqPgEECcng';
 app.use(cors());
 app.use(express.json());
 
+// Files for simple storage
+const FAVORITES_FILE = './favorites.json';
+const USERS_FILE = './users.json';
+
+function loadJSON(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function saveJSON(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+}
+
 app.get('/', (req, res) => {
   res.send('✅ API running');
 });
 
-// ======== EVENTS ROUTE ========
+// Login / Signup
+app.post('/api/signup', (req, res) => {
+  const { email, password } = req.body;
+  const users = loadJSON(USERS_FILE);
+  if (users[email]) return res.json({ message: 'User already exists' });
+  users[email] = { password };
+  saveJSON(USERS_FILE, users);
+  res.json({ message: 'Account created!' });
+});
+
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+  const users = loadJSON(USERS_FILE);
+  if (!users[email]) return res.json({ message: 'User not found' });
+  if (users[email].password !== password) return res.json({ message: 'Wrong password' });
+  res.json({ message: `Welcome back, ${email}!` });
+});
+
+app.post('/api/login-facebook', (req, res) => {
+  const { id, name, email } = req.body;
+  const users = loadJSON(USERS_FILE);
+  if (!users[email]) {
+    users[email] = { facebookId: id, name };
+    saveJSON(USERS_FILE, users);
+  }
+  res.json({ message: `Logged in as ${name}` });
+});
+
+// Favorites
+app.post('/api/favorites', (req, res) => {
+  const { userId, item, type } = req.body;
+  if (!userId || !item || !type) return res.status(400).json({ error: 'Missing required fields' });
+
+  const data = loadJSON(FAVORITES_FILE);
+  if (!data[userId]) data[userId] = { events: [], places: [] };
+  const list = data[userId][type === 'place' ? 'places' : 'events'];
+
+  if (!list.some(fav => fav.name === item.name)) {
+    list.push(item);
+    saveJSON(FAVORITES_FILE, data);
+  }
+
+  res.json({ success: true });
+});
+
+app.get('/api/favorites', (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+  const data = loadJSON(FAVORITES_FILE);
+  res.json(data[userId] || { events: [], places: [] });
+});
+
+// Events
 app.get('/api/events', async (req, res) => {
   const { city, date } = req.query;
   if (!city || !date) return res.status(400).json({ error: 'Missing city or date' });
@@ -34,7 +103,7 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
-// ======== PLACES ROUTE (FILTERED) ========
+// Places
 app.get('/api/places', async (req, res) => {
   const { city, datetime } = req.query;
   if (!city || !datetime) return res.status(400).json({ error: 'Missing city or datetime' });
@@ -77,7 +146,6 @@ app.get('/api/places', async (req, res) => {
   }
 });
 
-// ======== EVENTBRITE ========
 async function fetchEventbriteEvents(city, date) {
   const url = `https://www.eventbriteapi.com/v3/events/search/?location.address=${encodeURIComponent(city)}&start_date.range_start=${date}T00:00:00Z&start_date.range_end=${date}T23:59:59Z`;
 
@@ -100,7 +168,6 @@ async function fetchEventbriteEvents(city, date) {
   }
 }
 
-// ======== TICKETMASTER ========
 async function fetchTicketmasterEvents(city, date) {
   const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&city=${encodeURIComponent(city)}&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
 
