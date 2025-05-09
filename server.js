@@ -4,12 +4,11 @@ import fetch from 'node-fetch';
 import { createClient } from '@supabase/supabase-js';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Supabase credentials
+// Supabase
 const SUPABASE_URL = 'https://qbnwppkarszzhuxsgnxw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibndwcGthcnN6emh1eHNnbnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MTM5NDAsImV4cCI6MjA2MjM4OTk0MH0.Y_5U0LDiiqRWvYdpsdMDBsX5CkEtsNeeIGdyfoxOIaM';
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // External APIs
@@ -28,50 +27,56 @@ app.post('/api/signup', async (req, res) => {
   const { email, password } = req.body;
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) return res.status(400).json({ error: error.message });
-  res.json({ message: 'Account created!', user: data.user });
+  res.json({ user: data.user });
 });
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return res.status(400).json({ error: error.message });
-  res.json({ message: `Welcome back, ${email}`, user: data.user });
+  res.json({ user: data.user });
 });
 
 app.post('/api/login-facebook', async (req, res) => {
   const { id, name, email } = req.body;
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('users')
     .upsert([{ email, name, provider: 'facebook' }], { onConflict: ['email'] });
   if (error) return res.status(400).json({ error: error.message });
   res.json({ message: `Logged in as ${name}` });
 });
 
-// Favorites
+// Save favorite
 app.post('/api/favorites', async (req, res) => {
   const { userId, item, type } = req.body;
   if (!userId || !item || !type) return res.status(400).json({ error: 'Missing fields' });
+
   const { error } = await supabase
     .from('favorites')
     .insert([{ user_id: userId, type, data: item }]);
   if (error) return res.status(400).json({ error: error.message });
+
   res.json({ success: true });
 });
 
+// Load favorites
 app.get('/api/favorites', async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
   const { data, error } = await supabase
     .from('favorites')
     .select('*')
     .eq('user_id', userId);
+
   if (error) return res.status(400).json({ error: error.message });
+
   const events = data.filter(f => f.type === 'event').map(f => f.data);
   const places = data.filter(f => f.type === 'place').map(f => f.data);
   res.json({ events, places });
 });
 
-// Events route (Ticketmaster)
+// Events (Ticketmaster)
 app.get('/api/events', async (req, res) => {
   const { city, date } = req.query;
   if (!city || !date) return res.status(400).json({ error: 'Missing city or date' });
@@ -97,7 +102,7 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
-// Places route (Google Places)
+// Places (Google Places)
 app.get('/api/places', async (req, res) => {
   const { city, datetime } = req.query;
   if (!city || !datetime) return res.status(400).json({ error: 'Missing city or datetime' });
@@ -112,10 +117,8 @@ app.get('/api/places', async (req, res) => {
       const placeData = await placeRes.json();
 
       (placeData.results || []).forEach(place => {
-        if (
-          place.name.toLowerCase().includes('gas station') ||
-          place.name.toLowerCase().includes('fast food')
-        ) return;
+        const name = place.name.toLowerCase();
+        if (name.includes('gas station') || name.includes('fast food')) return;
 
         places.push({
           name: place.name,
