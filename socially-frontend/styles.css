@@ -15,7 +15,7 @@ header {
 
 /* Small Logo in header */
 .app-logo {
-  width: 40px; /* Small, about same as text height */
+  width: 40px;
   height: auto;
   margin: 10px auto;
   display: block;
@@ -23,11 +23,12 @@ header {
   user-select: none;
 }
 
+/* Search Section */
 #search {
   margin: 20px;
 }
 
-#datetime, #location {
+#datetime, #city, #state {
   padding: 10px;
   margin: 5px;
   width: 250px;
@@ -35,7 +36,8 @@ header {
   border: 1px solid #ccc;
 }
 
-button {
+/* Button Styles */
+button, .main-login-button {
   padding: 10px 20px;
   border-radius: 8px;
   border: none;
@@ -43,13 +45,16 @@ button {
   color: white;
   font-size: 1em;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
   margin-top: 10px;
 }
 
-button:hover {
+button:hover, .main-login-button:hover {
   background: #2980b9;
 }
 
+/* Facebook button style (login.html only) */
 .facebook-login-button {
   background-color: #4267B2;
   color: white;
@@ -68,6 +73,7 @@ button:hover {
   padding: 20px;
 }
 
+/* Event Cards */
 .event-card {
   background-color: #ffffff;
   padding: 15px;
@@ -75,6 +81,7 @@ button:hover {
   border-radius: 15px;
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
   text-align: center;
+  display: block;
   transition: transform 0.2s;
 }
 
@@ -83,13 +90,36 @@ button:hover {
 }
 
 .event-card img {
-  max-width: 300px;
+  display: block;
+  margin: 0 auto 10px auto;
   width: 100%;
+  max-width: 300px;
   height: auto;
   max-height: 200px;
   object-fit: cover;
   border-radius: 10px;
-  margin-bottom: 10px;
+}
+
+/* Place Cards */
+.place-card {
+  background-color: #ffffff;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 15px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  text-align: center;
+  display: block;
+}
+
+.place-card img {
+  display: block;
+  margin: 0 auto 10px auto;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  max-height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
 }
 
 /* Footer buttons */
@@ -111,4 +141,22 @@ footer {
 
 .footer-button:hover {
   background-color: #ddd;
+}
+
+/* Back to Top */
+#backToTop {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+/* Skip Sections */
+#skipButtons {
+  margin-top: 20px;
+}
+
+#parks-section,
+#eats-section {
+  scroll-margin-top: 80px;
 }

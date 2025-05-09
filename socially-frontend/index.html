@@ -1,49 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  
-  <!-- Disable zooming -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>social.ly</title>
-
-  <!-- App Icon -->
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-
-  <!-- Load Facebook SDK -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="stylesheet" href="styles.css" />
   <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
-
-  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
-  <!-- Initialize Facebook SDK -->
   <script>
-    window.fbAsyncInit = function() {
+    window.fbAsyncInit = function () {
       FB.init({
-        appId      : '1175981624005514', // Your Facebook App ID
-        cookie     : true,
-        xfbml      : true,
-        version    : 'v18.0'
+        appId: '1175981624005514',
+        cookie: true,
+        xfbml: true,
+        version: 'v18.0',
       });
       FB.AppEvents.logPageView();
     };
   </script>
 
   <header>
-    <img src="favicon.png" alt="social.ly Logo" class="app-logo">
+    <img src="favicon.png" alt="social.ly Logo" class="app-logo" />
   </header>
 
   <main>
-    <button onclick="viewFavorites()" style="margin-top: 10px;">View Favorites ❤️</button>
     <section id="search">
-      <button onclick="loginWithFacebook()" class="facebook-login-button">Login with Facebook</button>
-      <br/><br/>
-      <input type="datetime-local" id="datetime" />
-      <input type="text" id="location" placeholder="Enter a city" />
-      <button onclick="searchEvents()">Search Events</button>
+      <div id="mainLoginButtonContainer"></div>
+
+      <label for="datetime">Date & Time</label><br />
+      <input type="datetime-local" id="datetime" /><br />
+
+      <label for="city">City</label><br />
+      <input type="text" id="city" placeholder="e.g. Austin" /><br />
+
+      <label for="state">State</label><br />
+      <input type="text" id="state" placeholder="e.g. TX" /><br />
+
+      <button onclick="searchEvents()">Search</button>
     </section>
+
+    <button onclick="viewFavorites()">View Favorites ❤️</button>
+
+    <div id="skipButtons" style="display: none; margin-top: 20px;">
+      <button onclick="scrollToParks()">⬇️ Skip to Parks</button>
+      <button onclick="scrollToEats()">⬇️ Skip to Restaurants & Bars</button>
+    </div>
 
     <section id="results"></section>
 
@@ -54,6 +57,27 @@
     </footer>
   </main>
 
+  <button id="backToTop" onclick="scrollToTop()">⬆️</button>
+
   <script src="script.js"></script>
+  <script>
+    function renderAuthLinks() {
+      const container = document.getElementById('authLinks');
+      const user = localStorage.getItem('userEmail');
+
+      if (user) {
+        container.innerHTML = `<button onclick="logout()">Logout</button>`;
+      } else {
+        container.innerHTML = `<a href="login.html">Login</a>`;
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('userEmail');
+      window.location.reload();
+    }
+
+    renderAuthLinks();
+  </script>
 </body>
 </html>
