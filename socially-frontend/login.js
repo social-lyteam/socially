@@ -10,7 +10,7 @@ function showSignup() {
     const res = await fetch('https://socially-1-rm6w.onrender.com/api/login', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password })      
     });
   
     const data = await res.json();

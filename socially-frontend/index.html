@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>social.ly</title>
@@ -12,7 +13,9 @@
 
   <header>
     <img src="favicon.png" alt="social.ly logo" class="app-logo">
-    <div id="mainLoginButtonContainer"></div>
+    <div id="authControl" class="auth-control">
+      <button id="authButton" onclick="handleAuthClick()">Login</button>
+    </div>    
   </header>
 
   <button onclick="viewFavorites()" class="favorites-button">View Favorites ❤️</button>
@@ -44,5 +47,7 @@
   </main>
 
   <script src="script.js"></script>
+
+  <button id="backToTop" onclick="scrollToTop()">⬆️ Back to Top</button>
 </body>
 </html>

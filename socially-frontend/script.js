@@ -2,7 +2,6 @@ let favorites = [];
 let favoritePlaces = [];
 let latestEvents = [];
 
-// Scroll buttons
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -22,7 +21,6 @@ function scrollToActivities() {
   if (el) el.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Search Events + Places
 async function searchEvents() {
   const datetime = document.getElementById('datetime').value;
   const city = document.getElementById('city').value.trim();
@@ -73,59 +71,14 @@ async function searchEvents() {
       <div id="activities-section"><h2>Things to Do</h2></div>
     `;
 
+    const { parks, restaurantsAndBars, activities } = placesData.places;
     const parksSection = document.getElementById("parks-section");
     const eatsSection = document.getElementById("eats-section");
     const activitiesSection = document.getElementById("activities-section");
 
-    const places = placesData.places;
-
-    if (places.parks.length > 0) {
-      places.parks.forEach(place => {
-        const el = document.createElement('div');
-        el.className = 'place-card';
-        el.innerHTML = `
-          <img src="${place.photo}" alt="${place.name}" />
-          <strong>${place.name}</strong><br/>
-          ${place.type}<br/>
-          ${place.address}<br/>
-          ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
-          <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
-        `;
-        parksSection.appendChild(el);
-      });
-    }
-
-    if (places.restaurantsAndBars.length > 0) {
-      places.restaurantsAndBars.forEach(place => {
-        const el = document.createElement('div');
-        el.className = 'place-card';
-        el.innerHTML = `
-          <img src="${place.photo}" alt="${place.name}" />
-          <strong>${place.name}</strong><br/>
-          ${place.type}<br/>
-          ${place.address}<br/>
-          ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
-          <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
-        `;
-        eatsSection.appendChild(el);
-      });
-    }
-
-    if (places.activities.length > 0) {
-      places.activities.forEach(place => {
-        const el = document.createElement('div');
-        el.className = 'place-card';
-        el.innerHTML = `
-          <img src="${place.photo}" alt="${place.name}" />
-          <strong>${place.name}</strong><br/>
-          ${place.type}<br/>
-          ${place.address}<br/>
-          ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
-          <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
-        `;
-        activitiesSection.appendChild(el);
-      });
-    }
+    parks.forEach(place => addPlaceCard(place, parksSection));
+    restaurantsAndBars.forEach(place => addPlaceCard(place, eatsSection));
+    activities.forEach(place => addPlaceCard(place, activitiesSection));
 
   } catch (err) {
     console.error("Error fetching data:", err);
@@ -133,24 +86,81 @@ async function searchEvents() {
   }
 }
 
-// Add event to favorites
 function addToFavoritesFromIndex(index) {
   const event = latestEvents[index];
-  if (event && !favorites.some(f => f.name === event.name)) {
-    favorites.push(event);
-    alert(`Added "${event.name}" to your favorites!`);
+  const userId = localStorage.getItem('userId');
+  if (event && userId) {
+    fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, item: event, type: 'event' })
+    }).then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          favorites.push(event);
+          alert(`Added "${event.name}" to your favorites!`);
+        }
+      });
+  } else {
+    alert("Please log in to save favorites.");
   }
 }
 
-// Add place to favorites
 function addPlaceToFavorites(place) {
-  if (!favoritePlaces.some(p => p.name === place.name)) {
-    favoritePlaces.push(place);
-    alert(`Added "${place.name}" to your favorites!`);
+  const userId = localStorage.getItem('userId');
+  if (place && userId) {
+    fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, item: place, type: 'place' })
+    }).then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          favoritePlaces.push(place);
+          alert(`Added "${place.name}" to your favorites!`);
+        }
+      });
+  } else {
+    alert("Please log in to save favorites.");
   }
 }
 
-// View all favorites
+function addPlaceCard(place, section) {
+  const el = document.createElement('div');
+  el.className = 'place-card';
+  el.innerHTML = `
+    <img src="${place.photo}" alt="${place.name}" />
+    <strong>${place.name}</strong><br/>
+    ${place.type}<br/>
+    ${place.address}<br/>
+    ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+    <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+  `;
+  section.appendChild(el);
+}
+
+function removeFavorite(name, type) {
+  const userId = localStorage.getItem('userId');
+  if (!userId) return;
+
+  fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, itemName: name, type })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      if (type === 'event') favorites = favorites.filter(f => f.name !== name);
+      if (type === 'place') favoritePlaces = favoritePlaces.filter(p => p.name !== name);
+      viewFavorites();
+    } else {
+      alert('Failed to remove favorite.');
+    }
+  })
+  .catch(err => console.error("Error removing favorite:", err));
+}
+
 function viewFavorites() {
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = "<h2>Your Favorite Events:</h2>";
@@ -167,7 +177,8 @@ function viewFavorites() {
         ${event.date}<br/>
         ${event.venue}<br/>
         <a href="${event.url}" target="_blank">View Event</a><br/>
-        <small>Source: ${event.source}</small>
+        <small>Source: ${event.source}</small><br/>
+        <button onclick="removeFavorite('${event.name}', 'event')">❌ Remove</button>
       `;
       resultsDiv.appendChild(el);
     });
@@ -186,14 +197,14 @@ function viewFavorites() {
         <strong>${place.name}</strong><br/>
         ${place.type}<br/>
         ${place.address}<br/>
-        ${place.rating ? `⭐ ${place.rating}` : ""}
+        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        <button onclick="removeFavorite('${place.name}', 'place')">❌ Remove</button>
       `;
       resultsDiv.appendChild(el);
     });
   }
 }
 
-// Facebook login
 function loginWithFacebook() {
   FB.login(function(response) {
     if (response.authResponse) {
@@ -207,3 +218,45 @@ function loginWithFacebook() {
     }
   }, { scope: 'public_profile,email,user_friends' });
 }
+
+function renderAuthButton() {
+  const authButton = document.getElementById('authButton');
+  const userId = localStorage.getItem('userId');
+  if (authButton) {
+    authButton.textContent = userId ? 'Logout' : 'Login';
+  }
+}
+
+function handleAuthClick() {
+  const userId = localStorage.getItem('userId');
+  if (userId) {
+    localStorage.removeItem('userId');
+    location.reload();
+  } else {
+    window.location.href = 'login.html';
+  }
+}
+
+async function loadFavorites() {
+  const userId = localStorage.getItem('userId');
+  if (!userId) return;
+
+  try {
+    const res = await fetch(`https://socially-1-rm6w.onrender.com/api/favorites?userId=${encodeURIComponent(userId)}`);
+    const data = await res.json();
+    favorites = data.events || [];
+    favoritePlaces = data.places || [];
+  } catch (err) {
+    console.error("Error loading favorites:", err);
+  }
+}
+
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('backToTop');
+  if (btn) btn.style.display = window.scrollY > 700 ? 'block' : 'none';
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderAuthButton();
+  loadFavorites();
+});
