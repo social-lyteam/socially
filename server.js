@@ -46,35 +46,36 @@ app.post('/api/login-facebook', async (req, res) => {
   res.json({ message: `Logged in as ${name}` });
 });
 
-// Save favorite
+// Save favorite by email
 app.post('/api/favorites', async (req, res) => {
-  const { userId, item, type } = req.body;
-  if (!userId || !item || !type) return res.status(400).json({ error: 'Missing fields' });
-
-  const { error } = await supabase
-    .from('favorites')
-    .insert([{ user_id: userId, type, data: item }]);
-  if (error) return res.status(400).json({ error: error.message });
-
-  res.json({ success: true });
-});
-
-// Load favorites
-app.get('/api/favorites', async (req, res) => {
-  const { userId } = req.query;
-  if (!userId) return res.status(400).json({ error: 'Missing userId' });
-
-  const { data, error } = await supabase
-    .from('favorites')
-    .select('*')
-    .eq('user_id', userId);
-
-  if (error) return res.status(400).json({ error: error.message });
-
-  const events = data.filter(f => f.type === 'event').map(f => f.data);
-  const places = data.filter(f => f.type === 'place').map(f => f.data);
-  res.json({ events, places });
-});
+    const { email, item, type } = req.body;
+    if (!email || !item || !type) return res.status(400).json({ error: 'Missing fields' });
+  
+    const { error } = await supabase
+      .from('favorites')
+      .insert([{ email, type, data: item }]);
+  
+    if (error) return res.status(400).json({ error: error.message });
+  
+    res.json({ success: true });
+  });
+  
+  // Load favorites by email
+  app.get('/api/favorites', async (req, res) => {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+  
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('*')
+      .eq('email', email);
+  
+    if (error) return res.status(400).json({ error: error.message });
+  
+    const events = data.filter(f => f.type === 'event').map(f => f.data);
+    const places = data.filter(f => f.type === 'place').map(f => f.data);
+    res.json({ events, places });
+  });  
 
 // Remove favorite
 app.delete('/api/favorites', async (req, res) => {
