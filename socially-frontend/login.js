@@ -15,7 +15,7 @@ function showSignup() {
   
     const data = await res.json();
     if (data.user) {
-      localStorage.setItem('userId', data.user.id);
+      localStorage.setItem('userId', data.user.email);
       window.location.href = "index.html";
     } else {
       document.getElementById('loginStatus').textContent = data.error || data.message;

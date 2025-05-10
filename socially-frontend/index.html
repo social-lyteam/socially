@@ -1,83 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>social.ly</title>
-  <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/x-icon" href="favicon.png">
+  <link rel="stylesheet" href="styles.css">
   <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
 </head>
 <body>
-  <script>
-    window.fbAsyncInit = function () {
-      FB.init({
-        appId: '1175981624005514',
-        cookie: true,
-        xfbml: true,
-        version: 'v18.0',
-      });
-      FB.AppEvents.logPageView();
-    };
-  </script>
 
   <header>
-    <img src="favicon.png" alt="social.ly Logo" class="app-logo" />
+    <img src="favicon.png" alt="social.ly logo" class="app-logo">
+    <div id="mainLoginButtonContainer"></div>
   </header>
+
+  <button onclick="viewFavorites()" class="favorites-button">View Favorites ❤️</button>
 
   <main>
     <section id="search">
-      <div id="mainLoginButtonContainer"></div>
-
-      <label for="datetime">Date & Time</label><br />
-      <input type="datetime-local" id="datetime" /><br />
-
-      <label for="city">City</label><br />
-      <input type="text" id="city" placeholder="e.g. Austin" /><br />
-
-      <label for="state">State</label><br />
-      <input type="text" id="state" placeholder="e.g. TX" /><br />
-
+      <label for="datetime">Date/Time</label><br/>
+      <input type="datetime-local" id="datetime" />
+      <input type="text" id="city" placeholder="Enter city" />
+      <input type="text" id="state" placeholder="Enter state" />
       <button onclick="searchEvents()">Search</button>
     </section>
 
-    <button onclick="viewFavorites()">View Favorites ❤️</button>
-
-    <div id="skipButtons" style="display: none; margin-top: 20px;">
-      <button onclick="scrollToParks()">⬇️ Skip to Parks</button>
-      <button onclick="scrollToEats()">⬇️ Skip to Restaurants & Bars</button>
-    </div>
+    <div id="skipButtons" style="display: none; margin: 20px;">
+      <button onclick="scrollToParks()">Skip to Parks</button>
+      <button onclick="scrollToEats()">Skip to Restaurants & Bars</button>
+      <button onclick="scrollToActivities()">Skip to Activities</button>
+    </div>    
 
     <section id="results"></section>
 
     <footer>
       <button onclick="window.location.href='privacy.html'" class="footer-button">Privacy Policy</button>
-      <button onclick="window.location.href='data-deletion.html'" class="footer-button">Data Deletion Instructions</button>
+      <button onclick="window.location.href='data-deletion.html'" class="footer-button">Data Deletion</button>
       <button onclick="window.location.href='terms.html'" class="footer-button">Terms of Service</button>
     </footer>
+
+    <button id="backToTop" onclick="scrollToTop()" style="display: none;">Back to Top</button>
   </main>
 
-  <button id="backToTop" onclick="scrollToTop()">⬆️</button>
-
   <script src="script.js"></script>
-  <script>
-    function renderAuthLinks() {
-      const container = document.getElementById('authLinks');
-      const user = localStorage.getItem('userEmail');
-
-      if (user) {
-        container.innerHTML = `<button onclick="logout()">Logout</button>`;
-      } else {
-        container.innerHTML = `<a href="login.html">Login</a>`;
-      }
-    }
-
-    function logout() {
-      localStorage.removeItem('userEmail');
-      window.location.reload();
-    }
-
-    renderAuthLinks();
-  </script>
 </body>
 </html>

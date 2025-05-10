@@ -104,40 +104,95 @@ app.get('/api/events', async (req, res) => {
 
 // Places (Google Places)
 app.get('/api/places', async (req, res) => {
-  const { city, datetime } = req.query;
-  if (!city || !datetime) return res.status(400).json({ error: 'Missing city or datetime' });
-
-  try {
-    const types = ['park', 'restaurant', 'bar'];
-    const places = [];
-
-    for (const type of types) {
-      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${type}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
-      const placeRes = await fetch(url);
-      const placeData = await placeRes.json();
-
-      (placeData.results || []).forEach(place => {
-        const name = place.name.toLowerCase();
-        if (name.includes('gas station') || name.includes('fast food')) return;
-
-        places.push({
-          name: place.name,
-          type: type,
-          address: place.formatted_address,
-          rating: place.rating,
-          photo: place.photos?.[0]
-            ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
-            : 'https://via.placeholder.com/300x200?text=No+Image'
-        });
+    const { city, datetime } = req.query;
+    if (!city || !datetime) return res.status(400).json({ error: 'Missing city or datetime' });
+  
+    try {
+      const restaurantBarTypes = ['restaurant', 'bar'];
+      const activityKeywords = [
+        'escape room',
+        'rage room',
+        'axe throwing',
+        'topgolf',
+        'arcade',
+        'bowling alley',
+        'comedy club',
+        'indoor golf',
+        'mini golf',
+        'laser tag',
+        'paintball',
+        'trampoline park',
+        'climbing gym'
+      ];
+  
+      const allPlaces = {
+        restaurantsAndBars: [],
+        activities: [],
+        parks: []
+      };
+  
+      // Get parks
+      const parkUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=park+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
+      const parkRes = await fetch(parkUrl);
+      const parkData = await parkRes.json();
+      parkData.results?.forEach(p => {
+        if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
+          allPlaces.parks.push({
+            name: p.name,
+            type: 'park',
+            address: p.formatted_address,
+            rating: p.rating,
+            photo: p.photos?.[0]
+              ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
+              : 'https://via.placeholder.com/300x200?text=No+Image'
+          });
+        }
       });
+  
+      // Restaurants & bars
+      for (const type of restaurantBarTypes) {
+        const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${type}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
+        const resPlaces = await fetch(url);
+        const data = await resPlaces.json();
+        data.results?.forEach(p => {
+          if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
+            allPlaces.restaurantsAndBars.push({
+              name: p.name,
+              type,
+              address: p.formatted_address,
+              rating: p.rating,
+              photo: p.photos?.[0]
+                ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
+                : 'https://via.placeholder.com/300x200?text=No+Image'
+            });
+          }
+        });
+      }
+  
+      // Activities
+      for (const keyword of activityKeywords) {
+        const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(keyword)}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
+        const resPlaces = await fetch(url);
+        const data = await resPlaces.json();
+        data.results?.forEach(p => {
+          allPlaces.activities.push({
+            name: p.name,
+            type: keyword,
+            address: p.formatted_address,
+            rating: p.rating,
+            photo: p.photos?.[0]
+              ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
+              : 'https://via.placeholder.com/300x200?text=No+Image'
+          });
+        });
+      }
+  
+      res.json({ places: allPlaces });
+    } catch (err) {
+      console.error('Error fetching places:', err);
+      res.status(500).json({ error: 'Error fetching places' });
     }
-
-    res.json({ places });
-  } catch (err) {
-    console.error('Error fetching places:', err);
-    res.status(500).json({ error: 'Error fetching places' });
-  }
-});
+  });  
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
