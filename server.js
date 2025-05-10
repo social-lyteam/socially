@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 // Supabase
 const SUPABASE_URL = 'https://qbnwppkarszzhuxsgnxw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibndwcGthcnN6emh1eHNnbnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MTM5NDAsImV4cCI6MjA2MjM4OTk0MH0.Y_5U0LDiiqRWvYdpsdMDBsX5CkEtsNeeIGdyfoxOIaM';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // External APIs
@@ -76,6 +76,25 @@ app.get('/api/favorites', async (req, res) => {
   res.json({ events, places });
 });
 
+// Remove favorite
+app.delete('/api/favorites', async (req, res) => {
+  const { userId, itemName, type } = req.body;
+  if (!userId || !itemName || !type) {
+    return res.status(400).json({ error: 'Missing userId, itemName, or type' });
+  }
+
+  const { error } = await supabase
+    .from('favorites')
+    .delete()
+    .eq('user_id', userId)
+    .eq('type', type)
+    .contains('data', { name: itemName });
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json({ success: true });
+});
+
 // Events (Ticketmaster)
 app.get('/api/events', async (req, res) => {
   const { city, date } = req.query;
@@ -104,95 +123,85 @@ app.get('/api/events', async (req, res) => {
 
 // Places (Google Places)
 app.get('/api/places', async (req, res) => {
-    const { city, datetime } = req.query;
-    if (!city || !datetime) return res.status(400).json({ error: 'Missing city or datetime' });
-  
-    try {
-      const restaurantBarTypes = ['restaurant', 'bar'];
-      const activityKeywords = [
-        'escape room',
-        'rage room',
-        'axe throwing',
-        'topgolf',
-        'arcade',
-        'bowling alley',
-        'comedy club',
-        'indoor golf',
-        'mini golf',
-        'laser tag',
-        'paintball',
-        'trampoline park',
-        'climbing gym'
-      ];
-  
-      const allPlaces = {
-        restaurantsAndBars: [],
-        activities: [],
-        parks: []
-      };
-  
-      // Get parks
-      const parkUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=park+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
-      const parkRes = await fetch(parkUrl);
-      const parkData = await parkRes.json();
-      parkData.results?.forEach(p => {
+  const { city, datetime } = req.query;
+  if (!city || !datetime) return res.status(400).json({ error: 'Missing city or datetime' });
+
+  try {
+    const restaurantBarTypes = ['restaurant', 'bar'];
+    const activityKeywords = [
+      'escape room', 'rage room', 'axe throwing', 'topgolf', 'arcade',
+      'bowling alley', 'comedy club', 'indoor golf', 'mini golf',
+      'laser tag', 'paintball', 'trampoline park', 'climbing gym'
+    ];
+
+    const allPlaces = {
+      restaurantsAndBars: [],
+      activities: [],
+      parks: []
+    };
+
+    // Parks
+    const parkUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=park+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
+    const parkRes = await fetch(parkUrl);
+    const parkData = await parkRes.json();
+    parkData.results?.forEach(p => {
+      if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
+        allPlaces.parks.push({
+          name: p.name,
+          type: 'park',
+          address: p.formatted_address,
+          rating: p.rating,
+          photo: p.photos?.[0]
+            ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
+            : 'https://placehold.co/300x200?text=No+Image'
+        });
+      }
+    });
+
+    // Restaurants & Bars
+    for (const type of restaurantBarTypes) {
+      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${type}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
+      const resPlaces = await fetch(url);
+      const data = await resPlaces.json();
+      data.results?.forEach(p => {
         if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
-          allPlaces.parks.push({
+          allPlaces.restaurantsAndBars.push({
             name: p.name,
-            type: 'park',
+            type,
             address: p.formatted_address,
             rating: p.rating,
             photo: p.photos?.[0]
               ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
-              : 'https://via.placeholder.com/300x200?text=No+Image'
+              : 'https://placehold.co/300x200?text=No+Image'
           });
         }
       });
-  
-      // Restaurants & bars
-      for (const type of restaurantBarTypes) {
-        const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${type}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
-        const resPlaces = await fetch(url);
-        const data = await resPlaces.json();
-        data.results?.forEach(p => {
-          if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
-            allPlaces.restaurantsAndBars.push({
-              name: p.name,
-              type,
-              address: p.formatted_address,
-              rating: p.rating,
-              photo: p.photos?.[0]
-                ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
-                : 'https://via.placeholder.com/300x200?text=No+Image'
-            });
-          }
-        });
-      }
-  
-      // Activities
-      for (const keyword of activityKeywords) {
-        const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(keyword)}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
-        const resPlaces = await fetch(url);
-        const data = await resPlaces.json();
-        data.results?.forEach(p => {
-          allPlaces.activities.push({
-            name: p.name,
-            type: keyword,
-            address: p.formatted_address,
-            rating: p.rating,
-            photo: p.photos?.[0]
-              ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
-              : 'https://via.placeholder.com/300x200?text=No+Image'
-          });
-        });
-      }
-  
-      res.json({ places: allPlaces });
-    } catch (err) {
-      console.error('Error fetching places:', err);
-      res.status(500).json({ error: 'Error fetching places' });
     }
-  });  
+
+    // Activities
+    for (const keyword of activityKeywords) {
+      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(keyword)}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
+      const resPlaces = await fetch(url);
+      const data = await resPlaces.json();
+      data.results?.forEach(p => {
+        allPlaces.activities.push({
+          name: p.name,
+          type: keyword,
+          address: p.formatted_address,
+          rating: p.rating,
+          photo: p.photos?.[0]
+            ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
+            : 'https://placehold.co/300x200?text=No+Image'
+        });
+      });
+    }
+
+    res.json({ places: allPlaces });
+  } catch (err) {
+    console.error('Error fetching places:', err);
+    res.status(500).json({ error: 'Error fetching places' });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
