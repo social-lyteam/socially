@@ -112,9 +112,9 @@ app.get('/api/favorites', async (req, res) => {
 });
 
 app.delete('/api/favorites', async (req, res) => {
-  const { email, item, type } = req.body;
-  if (!email || !item || !type) {
-    return res.status(400).json({ error: 'Missing email, item, or type' });
+  const { email, itemName, type } = req.body;
+  if (!email || !itemName || !type) {
+    return res.status(400).json({ error: 'Missing email, itemName, or type' });
   }
 
   const { error } = await supabase
@@ -122,7 +122,7 @@ app.delete('/api/favorites', async (req, res) => {
     .delete()
     .eq('email', email)
     .eq('type', type)
-    .contains('data', { name: item.name });
+    .contains('data', { name: itemName });
 
   if (error) return res.status(400).json({ error: error.message });
 

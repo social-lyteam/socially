@@ -211,7 +211,7 @@ function removeFavorite(name, type) {
   fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, item: { name }, type })
+    body: JSON.stringify({ email, itemName: name, type })
   })
     .then(res => res.json())
     .then(data => {
