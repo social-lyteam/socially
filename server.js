@@ -77,19 +77,19 @@ app.post('/api/favorites', async (req, res) => {
     res.json({ events, places });
   });  
 
-// Remove favorite
+// Remove favorite by email
 app.delete('/api/favorites', async (req, res) => {
-  const { userId, itemName, type } = req.body;
-  if (!userId || !itemName || !type) {
-    return res.status(400).json({ error: 'Missing userId, itemName, or type' });
+  const { email, item, type } = req.body;
+  if (!email || !item || !type) {
+    return res.status(400).json({ error: 'Missing email, item, or type' });
   }
 
   const { error } = await supabase
     .from('favorites')
     .delete()
-    .eq('user_id', userId)
+    .eq('email', email)
     .eq('type', type)
-    .contains('data', { name: itemName });
+    .eq('data->>name', item.name); // match item name from JSON field
 
   if (error) return res.status(400).json({ error: error.message });
 

@@ -88,12 +88,12 @@ async function searchEvents() {
 
 function addToFavoritesFromIndex(index) {
   const event = latestEvents[index];
-  const userId = localStorage.getItem('userId');
-  if (event && userId) {
+  const email = localStorage.getItem('email');
+  if (event && email) {
     fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, item: event, type: 'event' })
+      body: JSON.stringify({ email, item: event, type: 'event' })
     }).then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -107,12 +107,12 @@ function addToFavoritesFromIndex(index) {
 }
 
 function addPlaceToFavorites(place) {
-  const userId = localStorage.getItem('userId');
-  if (place && userId) {
+  const email = localStorage.getItem('email');
+  if (place && email) {
     fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, item: place, type: 'place' })
+      body: JSON.stringify({ email, item: place, type: 'place' })
     }).then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -140,13 +140,13 @@ function addPlaceCard(place, section) {
 }
 
 function removeFavorite(name, type) {
-  const userId = localStorage.getItem('userId');
-  if (!userId) return;
+  const email = localStorage.getItem('email');
+  if (!email) return;
 
   fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, itemName: name, type })
+    body: JSON.stringify({ email, itemName: name, type })
   })
   .then(res => res.json())
   .then(data => {
@@ -221,16 +221,16 @@ function loginWithFacebook() {
 
 function renderAuthButton() {
   const authButton = document.getElementById('authButton');
-  const userId = localStorage.getItem('userId');
+  const email = localStorage.getItem('email');
   if (authButton) {
-    authButton.textContent = userId ? 'Logout' : 'Login';
+    authButton.textContent = email ? 'Logout' : 'Login';
   }
 }
 
 function handleAuthClick() {
-  const userId = localStorage.getItem('userId');
-  if (userId) {
-    localStorage.removeItem('userId');
+  const email = localStorage.getItem('email');
+  if (email) {
+    localStorage.removeItem('email');
     location.reload();
   } else {
     window.location.href = 'login.html';
@@ -238,11 +238,11 @@ function handleAuthClick() {
 }
 
 async function loadFavorites() {
-  const userId = localStorage.getItem('userId');
-  if (!userId) return;
+  const email = localStorage.getItem('email');
+  if (!email) return;
 
   try {
-    const res = await fetch(`https://socially-1-rm6w.onrender.com/api/favorites?userId=${encodeURIComponent(userId)}`);
+    const res = await fetch(`https://socially-1-rm6w.onrender.com/api/favorites?email=${encodeURIComponent(email)}`);
     const data = await res.json();
     favorites = data.events || [];
     favoritePlaces = data.places || [];
