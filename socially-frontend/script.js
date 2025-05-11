@@ -27,10 +27,11 @@ async function searchEvents() {
   const state = document.getElementById('state').value.trim();
   const location = `${city}, ${state}`;
 
-  if (!datetime || !city || !state) {
-    alert('Please enter a date/time, city, and state.');
+  if (!city || !state) {
+    alert('Please enter both city and state.');
     return;
   }
+
 
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = "<h2>Searching...</h2>";
