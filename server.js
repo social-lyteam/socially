@@ -8,10 +8,9 @@ const PORT = process.env.PORT || 3000;
 
 // Supabase
 const SUPABASE_URL = 'https://qbnwppkarszzhuxsgnxw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibndwcGthcnN6emh1eHNnbnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MTM5NDAsImV4cCI6MjA2MjM4OTk0MH0.Y_5U0LDiiqRWvYdpsdMDBsX5CkEtsNeeIGdyfoxOIaM';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// External APIs
 const TICKETMASTER_API_KEY = 'mPLzpIXal7XLK2mMxFTQgaPOEQMiGRAY';
 const GOOGLE_PLACES_API_KEY = 'AIzaSyA42IF4OTsvdq0kaUiaCxxqLXqPgEECcng';
 
@@ -22,7 +21,6 @@ app.get('/', (req, res) => {
   res.send('✅ Supabase-connected API is running');
 });
 
-// Auth routes
 app.post('/api/signup', async (req, res) => {
   const { email, password } = req.body;
   const { data, error } = await supabase.auth.signUp({ email, password });
@@ -46,67 +44,48 @@ app.post('/api/login-facebook', async (req, res) => {
   res.json({ message: `Logged in as ${name}` });
 });
 
-// Save favorite by email
 app.post('/api/favorites', async (req, res) => {
   const { email, item, type } = req.body;
   if (!email || !item || !type) return res.status(400).json({ error: 'Missing fields' });
 
-  // Save the favorite
-  const { error: insertError } = await supabase
-    .from('favorites')
-    .insert([{ email, type, data: item }]);
-
+  const { error: insertError } = await supabase.from('favorites').insert([{ email, type, data: item }]);
   if (insertError) return res.status(400).json({ error: insertError.message });
 
-  // Get all friends of the user
   const { data: friendsData, error: friendError } = await supabase
     .from('friends')
     .select('friend_email')
     .eq('user_email', email);
-
   if (friendError) return res.status(400).json({ error: friendError.message });
 
   const friendEmails = friendsData.map(f => f.friend_email);
-  if (friendEmails.length === 0) {
-    return res.json({ success: true, alsoFavoritedBy: [] });
-  }
+  if (friendEmails.length === 0) return res.json({ success: true, alsoFavoritedBy: [] });
 
-  // Check which friends also favorited this item
   const { data: matches, error: matchError } = await supabase
     .from('favorites')
     .select('email')
     .eq('type', type)
     .contains('data', { name: item.name })
     .in('email', friendEmails);
-
   if (matchError) return res.status(400).json({ error: matchError.message });
 
   res.json({ success: true, alsoFavoritedBy: matches.map(m => m.email) });
 });
-  
-  // Load favorites by email
-  app.get('/api/favorites', async (req, res) => {
-    const { email } = req.query;
-    if (!email) return res.status(400).json({ error: 'Missing email' });
-  
-    const { data, error } = await supabase
-      .from('favorites')
-      .select('*')
-      .eq('email', email);
-  
-    if (error) return res.status(400).json({ error: error.message });
-  
-    const events = data.filter(f => f.type === 'event').map(f => f.data);
-    const places = data.filter(f => f.type === 'place').map(f => f.data);
-    res.json({ events, places });
-  });  
 
-// Remove favorite by email
+app.get('/api/favorites', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Missing email' });
+
+  const { data, error } = await supabase.from('favorites').select('*').eq('email', email);
+  if (error) return res.status(400).json({ error: error.message });
+
+  const events = data.filter(f => f.type === 'event').map(f => f.data);
+  const places = data.filter(f => f.type === 'place').map(f => f.data);
+  res.json({ events, places });
+});
+
 app.delete('/api/favorites', async (req, res) => {
   const { email, item, type } = req.body;
-  if (!email || !item || !type) {
-    return res.status(400).json({ error: 'Missing email, item, or type' });
-  }
+  if (!email || !item || !type) return res.status(400).json({ error: 'Missing email, item, or type' });
 
   const { error } = await supabase
     .from('favorites')
@@ -114,7 +93,6 @@ app.delete('/api/favorites', async (req, res) => {
     .eq('email', email)
     .eq('type', type)
     .contains('data', { name: item.name });
-
   if (error) return res.status(400).json({ error: error.message });
 
   res.json({ success: true });
@@ -122,14 +100,9 @@ app.delete('/api/favorites', async (req, res) => {
 
 app.post('/api/friends', async (req, res) => {
   const { user_email, friend_email } = req.body;
-  if (!user_email || !friend_email) {
-    return res.status(400).json({ error: 'Missing user or friend email' });
-  }
+  if (!user_email || !friend_email) return res.status(400).json({ error: 'Missing user or friend email' });
 
-  const { error } = await supabase
-    .from('friends')
-    .insert([{ user_email, friend_email }]);
-
+  const { error } = await supabase.from('friends').insert([{ user_email, friend_email }]);
   if (error) return res.status(400).json({ error: error.message });
 
   res.json({ success: true });
@@ -139,34 +112,12 @@ app.get('/api/friends', async (req, res) => {
   const { email } = req.query;
   if (!email) return res.status(400).json({ error: 'Missing email' });
 
-  const { data, error } = await supabase
-    .from('friends')
-    .select('friend_email')
-    .eq('user_email', email);
-
+  const { data, error } = await supabase.from('friends').select('friend_email').eq('user_email', email);
   if (error) return res.status(400).json({ error: error.message });
 
   res.json({ friends: data.map(f => f.friend_email) });
 });
 
-// After saving a favorite, get all friends of the user
-const { data: friends } = await supabase
-  .from('friends')
-  .select('friend_email')
-  .eq('user_email', email);
-
-// See if any of those friends have already favorited the same item
-const { data: matches } = await supabase
-  .from('favorites')
-  .select('email')
-  .eq('type', type)
-  .contains('data', { name: item.name })
-  .in('email', friends.map(f => f.friend_email));
-
-// Optionally: return list of friend emails who also favorited it
-res.json({ success: true, alsoFavoritedBy: matches.map(m => m.email) });
-
-// Events (Ticketmaster)
 app.get('/api/events', async (req, res) => {
   const { city, date } = req.query;
   if (!city || !date) return res.status(400).json({ error: 'Missing city or date' });
@@ -192,26 +143,16 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
-// Places (Google Places)
 app.get('/api/places', async (req, res) => {
   const { city, datetime } = req.query;
   if (!city || !datetime) return res.status(400).json({ error: 'Missing city or datetime' });
 
   try {
     const restaurantBarTypes = ['restaurant', 'bar'];
-    const activityKeywords = [
-      'escape room', 'rage room', 'axe throwing', 'topgolf', 'arcade',
-      'bowling alley', 'comedy club', 'indoor golf', 'mini golf',
-      'laser tag', 'paintball', 'trampoline park', 'climbing gym'
-    ];
+    const activityKeywords = ['escape room', 'rage room', 'axe throwing', 'topgolf', 'arcade', 'bowling alley', 'comedy club', 'indoor golf', 'mini golf', 'laser tag', 'paintball', 'trampoline park', 'climbing gym'];
 
-    const allPlaces = {
-      restaurantsAndBars: [],
-      activities: [],
-      parks: []
-    };
+    const allPlaces = { restaurantsAndBars: [], activities: [], parks: [] };
 
-    // Parks
     const parkUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=park+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
     const parkRes = await fetch(parkUrl);
     const parkData = await parkRes.json();
@@ -222,14 +163,11 @@ app.get('/api/places', async (req, res) => {
           type: 'park',
           address: p.formatted_address,
           rating: p.rating,
-          photo: p.photos?.[0]
-            ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
-            : 'https://placehold.co/300x200?text=No+Image'
+          photo: p.photos?.[0] ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}` : 'https://placehold.co/300x200?text=No+Image'
         });
       }
     });
 
-    // Restaurants & Bars
     for (const type of restaurantBarTypes) {
       const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${type}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
       const resPlaces = await fetch(url);
@@ -241,15 +179,12 @@ app.get('/api/places', async (req, res) => {
             type,
             address: p.formatted_address,
             rating: p.rating,
-            photo: p.photos?.[0]
-              ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
-              : 'https://placehold.co/300x200?text=No+Image'
+            photo: p.photos?.[0] ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}` : 'https://placehold.co/300x200?text=No+Image'
           });
         }
       });
     }
 
-    // Activities
     for (const keyword of activityKeywords) {
       const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(keyword)}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
       const resPlaces = await fetch(url);
@@ -260,9 +195,7 @@ app.get('/api/places', async (req, res) => {
           type: keyword,
           address: p.formatted_address,
           rating: p.rating,
-          photo: p.photos?.[0]
-            ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
-            : 'https://placehold.co/300x200?text=No+Image'
+          photo: p.photos?.[0] ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}` : 'https://placehold.co/300x200?text=No+Image'
         });
       });
     }
