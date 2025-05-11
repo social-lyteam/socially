@@ -128,9 +128,14 @@ app.delete('/api/favorites', async (req, res) => {
 
 app.post('/api/friends', async (req, res) => {
   const { user_email, friend_email } = req.body;
-  if (!user_email || !friend_email) return res.status(400).json({ error: 'Missing user or friend email' });
+  if (!user_email || !friend_email) {
+    return res.status(400).json({ error: 'Missing user or friend email' });
+  }
 
-  const { error } = await supabase.from('friends').insert([{ user_email, friend_email }]);
+  const { error } = await supabase
+    .from('friends')
+    .insert([{ user_email, friend_email }]);
+
   if (error) return res.status(400).json({ error: error.message });
 
   res.json({ success: true });

@@ -89,40 +89,67 @@ async function searchEvents() {
 function addToFavoritesFromIndex(index) {
   const event = latestEvents[index];
   const email = localStorage.getItem('email');
-  if (event && email) {
-    fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, item: event, type: 'event' })
-    }).then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          favorites.push(event);
-          alert(`Added "${event.name}" to your favorites!`);
-        }
-      });
-  } else {
+  if (!event || !email) {
     alert("Please log in to save favorites.");
+    return;
   }
+
+  fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, item: event, type: 'event' })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      favorites.push(event);
+      const card = document.querySelectorAll('.event-card')[index];
+      if (data.alsoFavoritedBy?.length > 0) {
+        const matchDiv = document.createElement('div');
+        matchDiv.innerHTML = `<small>Also favorited by: ${data.alsoFavoritedBy.join(', ')}</small>`;
+        card.appendChild(matchDiv);
+      }
+      alert(`Added "${event.name}" to your favorites!`);
+    } else {
+      alert('Failed to save favorite.');
+    }
+  })
+  .catch(err => console.error("Favorite event error:", err));
 }
 
 function addPlaceToFavorites(place) {
   const email = localStorage.getItem('email');
-  if (place && email) {
-    fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, item: place, type: 'place' })
-    }).then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          favoritePlaces.push(place);
-          alert(`Added "${place.name}" to your favorites!`);
-        }
-      });
-  } else {
+  if (!place || !email) {
     alert("Please log in to save favorites.");
+    return;
   }
+
+  fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, item: place, type: 'place' })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      favoritePlaces.push(place);
+      alert(`Added "${place.name}" to your favorites!`);
+
+      const allPlaceCards = document.querySelectorAll('.place-card');
+      for (const card of allPlaceCards) {
+        const strong = card.querySelector('strong');
+        if (strong && strong.textContent === place.name && data.alsoFavoritedBy?.length > 0) {
+          const matchDiv = document.createElement('div');
+          matchDiv.innerHTML = `<small>Also favorited by: ${data.alsoFavoritedBy.join(', ')}</small>`;
+          card.appendChild(matchDiv);
+          break;
+        }
+      }
+    } else {
+      alert('Failed to save favorite.');
+    }
+  })
+  .catch(err => console.error("Favorite place error:", err));
 }
 
 function addPlaceCard(place, section) {
@@ -234,31 +261,36 @@ function viewFavorites() {
   }
 }
 
-async function addFriend() {
-  const userEmail = localStorage.getItem('email');
-  const friendEmail = document.getElementById('friendEmail').value.trim();
-  if (!userEmail || !friendEmail) {
-    alert("Both your email and your friend's email are required.");
+function addFriend() {
+  const user_email = localStorage.getItem('email');
+  const friend_email = document.getElementById('friendEmailInput').value.trim();
+  const statusEl = document.getElementById('friendStatus');
+
+  if (!user_email || !friend_email) {
+    alert("You must be logged in and enter a friend's email.");
     return;
   }
 
-  try {
-    const res = await fetch('https://socially-1-rm6w.onrender.com/api/friends', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_email: userEmail, friend_email: friendEmail })
-    });
-    const data = await res.json();
+  fetch('https://socially-1-rm6w.onrender.com/api/friends', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_email, friend_email })
+  })
+  .then(res => res.json())
+  .then(data => {
     if (data.success) {
-      alert("Friend added!");
-      document.getElementById('friendEmail').value = '';
-      loadFriends(); // refresh list
+      statusEl.textContent = `✅ Success`;
+      setTimeout(() => location.reload(), 1500); // Auto-refresh after 1.5s
     } else {
-      alert("Error: " + data.error);
+      statusEl.textContent = `❌ ${data.error}`;
+      statusEl.style.color = 'red';
     }
-  } catch (err) {
-    console.error("Failed to add friend:", err);
-  }
+  })
+  .catch(err => {
+    statusEl.textContent = "❌ Network error. Try again later.";
+    statusEl.style.color = 'red';
+    console.error("Add friend error:", err);
+  });
 }
 
 async function loadFriends() {
