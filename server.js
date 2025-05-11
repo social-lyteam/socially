@@ -48,17 +48,41 @@ app.post('/api/login-facebook', async (req, res) => {
 
 // Save favorite by email
 app.post('/api/favorites', async (req, res) => {
-    const { email, item, type } = req.body;
-    if (!email || !item || !type) return res.status(400).json({ error: 'Missing fields' });
-  
-    const { error } = await supabase
-      .from('favorites')
-      .insert([{ email, type, data: item }]);
-  
-    if (error) return res.status(400).json({ error: error.message });
-  
-    res.json({ success: true });
-  });
+  const { email, item, type } = req.body;
+  if (!email || !item || !type) return res.status(400).json({ error: 'Missing fields' });
+
+  // Save the favorite
+  const { error: insertError } = await supabase
+    .from('favorites')
+    .insert([{ email, type, data: item }]);
+
+  if (insertError) return res.status(400).json({ error: insertError.message });
+
+  // Get all friends of the user
+  const { data: friendsData, error: friendError } = await supabase
+    .from('friends')
+    .select('friend_email')
+    .eq('user_email', email);
+
+  if (friendError) return res.status(400).json({ error: friendError.message });
+
+  const friendEmails = friendsData.map(f => f.friend_email);
+  if (friendEmails.length === 0) {
+    return res.json({ success: true, alsoFavoritedBy: [] });
+  }
+
+  // Check which friends also favorited this item
+  const { data: matches, error: matchError } = await supabase
+    .from('favorites')
+    .select('email')
+    .eq('type', type)
+    .contains('data', { name: item.name })
+    .in('email', friendEmails);
+
+  if (matchError) return res.status(400).json({ error: matchError.message });
+
+  res.json({ success: true, alsoFavoritedBy: matches.map(m => m.email) });
+});
   
   // Load favorites by email
   app.get('/api/favorites', async (req, res) => {

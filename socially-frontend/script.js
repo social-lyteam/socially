@@ -207,6 +207,52 @@ function viewFavorites() {
   }
 }
 
+async function addFriend() {
+  const userEmail = localStorage.getItem('email');
+  const friendEmail = document.getElementById('friendEmail').value.trim();
+  if (!userEmail || !friendEmail) {
+    alert("Both your email and your friend's email are required.");
+    return;
+  }
+
+  try {
+    const res = await fetch('https://socially-1-rm6w.onrender.com/api/friends', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_email: userEmail, friend_email: friendEmail })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("Friend added!");
+      document.getElementById('friendEmail').value = '';
+      loadFriends(); // refresh list
+    } else {
+      alert("Error: " + data.error);
+    }
+  } catch (err) {
+    console.error("Failed to add friend:", err);
+  }
+}
+
+async function loadFriends() {
+  const email = localStorage.getItem('email');
+  if (!email) return;
+
+  try {
+    const res = await fetch(`https://socially-1-rm6w.onrender.com/api/friends?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    const friendList = document.getElementById('friendList');
+    friendList.innerHTML = '';
+    data.friends.forEach(friend => {
+      const li = document.createElement('li');
+      li.textContent = friend;
+      friendList.appendChild(li);
+    });
+  } catch (err) {
+    console.error("Error loading friends:", err);
+  }
+}
+
 function loginWithFacebook() {
   FB.login(function(response) {
     if (response.authResponse) {
@@ -261,4 +307,10 @@ window.addEventListener('scroll', () => {
 document.addEventListener('DOMContentLoaded', () => {
   renderAuthButton();
   loadFavorites();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderAuthButton();
+  loadFavorites();
+  loadFriends(); // 👈 Add this line
 });
