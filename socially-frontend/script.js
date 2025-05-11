@@ -27,14 +27,13 @@ async function searchEvents() {
   const state = document.getElementById('state').value.trim();
   const location = `${city}, ${state}`;
 
-  if (!city || !state) {
-    alert('Please enter a city and state/province/country.');
+  if (!datetimeInput || !city || !state) {
+    alert('Please enter a date/time, city, and state/province/country.');
     return;
   }
 
-  // Split the input into date and time
   const [date, time] = datetimeInput.split('T');
-  const datetime = time ? `${date}T${time}` : date;
+  const datetime = `${date}T${time}`;
 
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = "<h2>Searching...</h2>";
@@ -48,8 +47,76 @@ async function searchEvents() {
 
     document.getElementById('skipButtons').style.display = 'block';
 
-    // Continue processing and rendering your results below...
-    // You can insert your existing result-rendering code here
+    // Render Events
+    resultsDiv.innerHTML = "<h2>Events:</h2>";
+    if (eventsData.events && eventsData.events.length > 0) {
+      eventsData.events.forEach((event, index) => {
+        const el = document.createElement('div');
+        el.className = 'event-card';
+        el.innerHTML = `
+          <img src="${event.image}" alt="${event.name}" />
+          <strong>${event.name}</strong><br/>
+          ${event.date}<br/>
+          ${event.venue}<br/>
+          <a href="${event.url}" target="_blank">View Event</a><br/>
+          <small>Source: ${event.source}</small><br/>
+          <button onclick="addToFavoritesFromIndex(${index})">❤️ Favorite</button>
+        `;
+        resultsDiv.appendChild(el);
+      });
+    } else {
+      resultsDiv.innerHTML += "<p>No events found.</p>";
+    }
+
+    // Render Places
+    const { parks, restaurantsAndBars, activities } = placesData.places;
+
+    resultsDiv.innerHTML += `<div id="parks-section"><h2>Open Parks</h2></div>`;
+    parks.forEach(place => {
+      const el = document.createElement('div');
+      el.className = 'place-card';
+      el.innerHTML = `
+        <img src="${place.photo}" alt="${place.name}" />
+        <strong>${place.name}</strong><br/>
+        ${place.type}<br/>
+        ${place.address}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+      `;
+
+      document.getElementById('parks-section').appendChild(el);
+    });
+
+    resultsDiv.innerHTML += `<div id="eats-section"><h2>Restaurants & Bars</h2></div>`;
+    restaurantsAndBars.forEach(place => {
+      const el = document.createElement('div');
+      el.className = 'place-card';
+      el.innerHTML = `
+        <img src="${place.photo}" alt="${place.name}" />
+        <strong>${place.name}</strong><br/>
+        ${place.type}<br/>
+        ${place.address}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+      `;
+
+      document.getElementById('eats-section').appendChild(el);
+    });
+
+    resultsDiv.innerHTML += `<div id="activities-section"><h2>Things to Do</h2></div>`;
+    activities.forEach(place => {
+      const el = document.createElement('div');
+      el.className = 'place-card';
+      el.innerHTML = `
+        <img src="${place.photo}" alt="${place.name}" />
+        <strong>${place.name}</strong><br/>
+        ${place.type}<br/>
+        ${place.address}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+      `;
+      document.getElementById('activities-section').appendChild(el);
+    });
 
   } catch (err) {
     console.error("Error fetching data:", err);
@@ -137,29 +204,29 @@ function addPlaceCard(place, section) {
   section.appendChild(el);
 }
 
-function removeFavorite(item, type) {
+function removeFavorite(name, type) {
   const email = localStorage.getItem('email');
   if (!email) return;
 
   fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, item, type })  // send full object
+    body: JSON.stringify({ email, item: { name }, type })
   })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      if (type === 'event') {
-        favorites = favorites.filter(f => f.name !== item.name);
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        if (type === 'event') {
+          favorites = favorites.filter(f => f.name !== name);
+        } else if (type === 'place') {
+          favoritePlaces = favoritePlaces.filter(p => p.name !== name);
+        }
+        viewFavorites();
       } else {
-        favoritePlaces = favoritePlaces.filter(p => p.name !== item.name);
+        alert('Failed to remove favorite.');
       }
-      viewFavorites();
-    } else {
-      alert('Failed to remove favorite.');
-    }
-  })
-  .catch(err => console.error("Error removing favorite:", err));
+    })
+    .catch(err => console.error("Error removing favorite:", err));
 }
 
 function viewFavorites() {
