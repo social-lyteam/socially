@@ -71,6 +71,34 @@ app.post('/api/favorites', async (req, res) => {
   res.json({ success: true, alsoFavoritedBy: matches.map(m => m.email) });
 });
 
+app.post('/api/favorites/check', async (req, res) => {
+  const { email, itemName, type } = req.body;
+  if (!email || !itemName || !type) {
+    return res.status(400).json({ error: 'Missing fields' });
+  }
+
+  const { data: friendsData, error: friendError } = await supabase
+    .from('friends')
+    .select('friend_email')
+    .eq('user_email', email);
+
+  if (friendError) return res.status(400).json({ error: friendError.message });
+
+  const friendEmails = friendsData.map(f => f.friend_email);
+  if (friendEmails.length === 0) return res.json({ alsoFavoritedBy: [] });
+
+  const { data: matches, error: matchError } = await supabase
+    .from('favorites')
+    .select('email')
+    .eq('type', type)
+    .contains('data', { name: itemName })
+    .in('email', friendEmails);
+
+  if (matchError) return res.status(400).json({ error: matchError.message });
+
+  res.json({ alsoFavoritedBy: matches.map(m => m.email) });
+});
+
 app.get('/api/favorites', async (req, res) => {
   const { email } = req.query;
   if (!email) return res.status(400).json({ error: 'Missing email' });

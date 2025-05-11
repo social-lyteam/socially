@@ -167,10 +167,13 @@ function viewFavorites() {
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = "<h2>Your Favorite Events:</h2>";
 
+  const email = localStorage.getItem('email');
+  if (!email) return;
+
   if (favorites.length === 0) {
     resultsDiv.innerHTML += "<p>No favorite events yet.</p>";
   } else {
-    favorites.forEach(event => {
+    favorites.forEach(async (event) => {
       const el = document.createElement('div');
       el.className = 'event-card';
       el.innerHTML = `
@@ -181,8 +184,20 @@ function viewFavorites() {
         <a href="${event.url}" target="_blank">View Event</a><br/>
         <small>Source: ${event.source}</small><br/>
         <button onclick="removeFavorite('${event.name}', 'event')">❌ Remove</button>
+        <div class="also-favorited"></div>
       `;
       resultsDiv.appendChild(el);
+
+      const alsoDiv = el.querySelector('.also-favorited');
+      const res = await fetch('https://socially-1-rm6w.onrender.com/api/favorites/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, itemName: event.name, type: 'event' })
+      });
+      const data = await res.json();
+      if (data.alsoFavoritedBy?.length > 0) {
+        alsoDiv.innerHTML = `<em>Also favorited by: ${data.alsoFavoritedBy.join(', ')}</em>`;
+      }
     });
   }
 
@@ -191,7 +206,7 @@ function viewFavorites() {
   if (favoritePlaces.length === 0) {
     resultsDiv.innerHTML += "<p>No favorite places yet.</p>";
   } else {
-    favoritePlaces.forEach(place => {
+    favoritePlaces.forEach(async (place) => {
       const el = document.createElement('div');
       el.className = 'place-card';
       el.innerHTML = `
@@ -201,8 +216,20 @@ function viewFavorites() {
         ${place.address}<br/>
         ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
         <button onclick="removeFavorite('${place.name}', 'place')">❌ Remove</button>
+        <div class="also-favorited"></div>
       `;
       resultsDiv.appendChild(el);
+
+      const alsoDiv = el.querySelector('.also-favorited');
+      const res = await fetch('https://socially-1-rm6w.onrender.com/api/favorites/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, itemName: place.name, type: 'place' })
+      });
+      const data = await res.json();
+      if (data.alsoFavoritedBy?.length > 0) {
+        alsoDiv.innerHTML = `<em>Also favorited by: ${data.alsoFavoritedBy.join(', ')}</em>`;
+      }
     });
   }
 }
