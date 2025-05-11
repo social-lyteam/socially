@@ -143,10 +143,12 @@ function removeFavorite(name, type) {
   const email = localStorage.getItem('email');
   if (!email) return;
 
+  const item = { name }; // Wrap in object to match server expectations
+
   fetch('https://socially-1-rm6w.onrender.com/api/favorites', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, itemName: name, type })
+    body: JSON.stringify({ email, item, type })
   })
   .then(res => res.json())
   .then(data => {

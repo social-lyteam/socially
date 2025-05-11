@@ -89,7 +89,7 @@ app.delete('/api/favorites', async (req, res) => {
     .delete()
     .eq('email', email)
     .eq('type', type)
-    .eq('data->>name', item.name); // match item name from JSON field
+    .contains('data', { name: item.name });
 
   if (error) return res.status(400).json({ error: error.message });
 
