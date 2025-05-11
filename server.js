@@ -96,6 +96,52 @@ app.delete('/api/favorites', async (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/friends', async (req, res) => {
+  const { user_email, friend_email } = req.body;
+  if (!user_email || !friend_email) {
+    return res.status(400).json({ error: 'Missing user or friend email' });
+  }
+
+  const { error } = await supabase
+    .from('friends')
+    .insert([{ user_email, friend_email }]);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json({ success: true });
+});
+
+app.get('/api/friends', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Missing email' });
+
+  const { data, error } = await supabase
+    .from('friends')
+    .select('friend_email')
+    .eq('user_email', email);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json({ friends: data.map(f => f.friend_email) });
+});
+
+// After saving a favorite, get all friends of the user
+const { data: friends } = await supabase
+  .from('friends')
+  .select('friend_email')
+  .eq('user_email', email);
+
+// See if any of those friends have already favorited the same item
+const { data: matches } = await supabase
+  .from('favorites')
+  .select('email')
+  .eq('type', type)
+  .contains('data', { name: item.name })
+  .in('email', friends.map(f => f.friend_email));
+
+// Optionally: return list of friend emails who also favorited it
+res.json({ success: true, alsoFavoritedBy: matches.map(m => m.email) });
+
 // Events (Ticketmaster)
 app.get('/api/events', async (req, res) => {
   const { city, date } = req.query;
