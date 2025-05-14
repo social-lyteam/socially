@@ -10,36 +10,52 @@
 </head>
 <body>
 
-  <header>
-    <img src="favicon.png" alt="social.ly logo" class="app-logo">
-    <div id="authControl" class="auth-control">
-      <button id="authButton" onclick="handleAuthClick()">Login</button>
-    </div>    
-  </header>
-
-  <button onclick="viewFavorites()" class="favorites-button">View Favorites ❤️</button>
+ <header>
+  <img src="favicon.png" alt="social.ly logo" class="app-logo" onclick="window.location.href='index.html'" />
+  <div class="dropdown">
+    <button onclick="toggleDropdown()">☰</button>
+    <div id="dropdownMenu" class="dropdown-content">
+      <button id="authButton" onclick="handleAuthClick()">Login/signup</button>
+      <button onclick="viewFavorites()">View Favorites ❤️</button>
+      <button onclick="toggleAddFriend()">Add Friend</button>
+      <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    </div>
+  </div>
+</header>
 
   <main>
+    <h2 class="tagline">There's always something to do!</h2>
     <section id="search">
-      <label for="datetime">Date/Time</label><br/>
-      <input type="datetime-local" id="datetime" />
+      <label for="datetime">Date</label>
+      <input type="date" id="datetime" />
       <input type="text" id="city" placeholder="City" />
       <input type="text" id="state" placeholder="State/Province/Country" />
       <button onclick="searchEvents()">Search</button>
     </section>
+    <label for="sort">Sort by:</label>
+    <select id="sortOption">
+      <option value="alphabetical">Sort by: Alphabetical</option>
+      <option value="highestRated">Sort by: Highest Rated</option>
+      <option value="mostPopular">Sort by: Most Popular</option>
+    </select>
 
-    <section id="addFriendSection" style="margin-top: 30px;">
+    <section id="addFriendSection" style="display:none; margin-top: 30px;">
       <h3>Add a Friend</h3>
-      <input type="email" id="friendEmailInput" placeholder="Friend's email" style="padding: 10px; width: 250px; border-radius: 8px; border: 1px solid #ccc;" />
-      <button onclick="addFriend()" style="margin-left: 10px;">Add Friend</button>
+      <input type="email" id="friendEmailInput" placeholder="Friend's email" />
+      <button onclick="addFriend()">Add Friend</button>
       <p id="friendStatus" style="margin-top: 10px; color: green;"></p>
+    </section>
+
+    <section id="featured" class="featured-section">
+      <h2>🌍 Featured Events Around the World</h2>
+      <div id="featuredEventContainer" class="event-card">Loading...</div>
     </section>
 
     <div id="skipButtons" style="display: none; margin: 20px;">
       <button onclick="scrollToParks()">Skip to Parks</button>
       <button onclick="scrollToEats()">Skip to Restaurants & Bars</button>
       <button onclick="scrollToActivities()">Skip to Activities</button>
-    </div>    
+    </div>
 
     <section id="results"></section>
 
@@ -49,10 +65,9 @@
       <button onclick="window.location.href='terms.html'" class="footer-button">Terms of Service</button>
     </footer>
 
-    <button id="backToTop" onclick="scrollToTop()" style="display: none;">Back to Top</button>
+    <button id="backToTop" onclick="scrollToTop()">⬆️</button>
   </main>
 
   <script src="script.js"></script>
-
 </body>
 </html>

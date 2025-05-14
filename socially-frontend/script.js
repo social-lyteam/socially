@@ -21,10 +21,57 @@ function scrollToActivities() {
   if (el) el.scrollIntoView({ behavior: 'smooth' });
 }
 
+async function fetchPopularityCounts(type) {
+  const res = await fetch('https://socially-1-rm6w.onrender.com/api/favorites/count', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type })
+  });
+  return await res.json();
+}
+
+// Toggle dropdown menu
+function toggleDropdown() {
+  const menu = document.getElementById('dropdownMenu');
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+
+// Toggle Add Friend section
+function toggleAddFriend() {
+  const section = document.getElementById('addFriendSection');
+  section.style.display = section.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('dropdownMenu').style.display = 'none';
+}
+
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
+  localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+  document.getElementById('dropdownMenu').style.display = 'none';
+}
+
+function renderAuthButton() {
+  const authButton = document.getElementById('authButton');
+  const email = localStorage.getItem('email');
+  if (authButton) {
+    authButton.textContent = email ? 'Logout' : 'Login/Signup';
+  }
+}
+
+function handleAuthClick() {
+  const email = localStorage.getItem('email');
+  if (email) {
+    localStorage.removeItem('email');
+    location.reload();
+  } else {
+    window.location.href = 'login.html';
+  }
+}
+
 async function searchEvents() {
   const datetimeInput = document.getElementById('datetime').value;
   const city = document.getElementById('city').value.trim();
   const state = document.getElementById('state').value.trim();
+  const sortOption = document.getElementById('sortOption')?.value || 'alphabetical';
   const location = `${city}, ${state}`;
 
   if (!datetimeInput || !city || !state) {
@@ -32,90 +79,89 @@ async function searchEvents() {
     return;
   }
 
-  const [date, time] = datetimeInput.split('T');
-  const datetime = `${date}T${time}`;
-
+  const date = datetimeInput;
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = "<h2>Searching...</h2>";
 
   try {
-    const eventsRes = await fetch(`https://socially-1-rm6w.onrender.com/api/events?city=${encodeURIComponent(location)}&date=${date}`);
-    const eventsData = await eventsRes.json();
+    // Fetch data + popularity counts in parallel
+    const [eventsRes, placesRes, eventCounts, placeCounts] = await Promise.all([
+      fetch(`https://socially-1-rm6w.onrender.com/api/events?city=${encodeURIComponent(location)}&date=${date}`),
+      fetch(`https://socially-1-rm6w.onrender.com/api/places?city=${encodeURIComponent(location)}&datetime=${encodeURIComponent(date)}`),
+      fetchPopularityCounts('event'),
+      fetchPopularityCounts('place')
+    ]);
 
-    const placesRes = await fetch(`https://socially-1-rm6w.onrender.com/api/places?city=${encodeURIComponent(location)}&datetime=${encodeURIComponent(datetime)}`);
+    const eventsData = await eventsRes.json();
     const placesData = await placesRes.json();
+
+    // Map name -> count
+    const eventFavMap = Object.fromEntries(eventCounts.map(e => [e.name, e.count]));
+    const placeFavMap = Object.fromEntries(placeCounts.map(p => [p.name, p.count]));
+
+    // Inject favCount into data
+    eventsData.events.forEach(e => e.favCount = eventFavMap[e.name] || 0);
+    latestEvents = eventsData.events;
+    const { parks, restaurantsAndBars, activities } = placesData.places;
+    parks.forEach(p => p.favCount = placeFavMap[p.name] || 0);
+    restaurantsAndBars.forEach(p => p.favCount = placeFavMap[p.name] || 0);
+    activities.forEach(p => p.favCount = placeFavMap[p.name] || 0);
+
+    const sortBy = (array) => {
+      if (sortOption === 'alphabetical') {
+        return array.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sortOption === 'highestRated') {
+        return array.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      } else if (sortOption === 'mostPopular') {
+        return array.sort((a, b) => (b.favCount || 0) - (a.favCount || 0));
+      }
+      return array;
+    };
 
     document.getElementById('skipButtons').style.display = 'block';
 
     // Render Events
     resultsDiv.innerHTML = "<h2>Events:</h2>";
-    if (eventsData.events && eventsData.events.length > 0) {
-      eventsData.events.forEach((event, index) => {
-        const el = document.createElement('div');
-        el.className = 'event-card';
-        el.innerHTML = `
-          <img src="${event.image}" alt="${event.name}" />
-          <strong>${event.name}</strong><br/>
-          ${event.date}<br/>
-          ${event.venue}<br/>
-          <a href="${event.url}" target="_blank">View Event</a><br/>
-          <small>Source: ${event.source}</small><br/>
-          <button onclick="addToFavoritesFromIndex(${index})">❤️ Favorite</button>
-        `;
-        resultsDiv.appendChild(el);
-      });
-    } else {
-      resultsDiv.innerHTML += "<p>No events found.</p>";
-    }
+    sortBy(eventsData.events).forEach((event, index) => {
+      const el = document.createElement('div');
+      el.className = 'event-card';
+      el.innerHTML = `
+        <img src="${event.image}" alt="${event.name}" />
+        <strong>${event.name}</strong><br/>
+        ${event.date}<br/>
+        ${event.venue}<br/>
+        <a href="${event.url}" target="_blank">View Event</a><br/>
+        <small>❤️ ${event.favCount} favorites | Source: ${event.source}</small><br/>
+        <button onclick='addEventToFavorites(${JSON.stringify(event).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+      `;
+      resultsDiv.appendChild(el);
+    });
 
     // Render Places
-    const { parks, restaurantsAndBars, activities } = placesData.places;
+    const placeSections = [
+      { title: 'Parks', data: sortBy(parks), id: 'parks-section' },
+      { title: 'Restaurants & Bars', data: sortBy(restaurantsAndBars), id: 'eats-section' },
+      { title: 'Things to Do', data: sortBy(activities), id: 'activities-section' }
+    ];
 
-    resultsDiv.innerHTML += `<div id="parks-section"><h2>Open Parks</h2></div>`;
-    parks.forEach(place => {
-      const el = document.createElement('div');
-      el.className = 'place-card';
-      el.innerHTML = `
-        <img src="${place.photo}" alt="${place.name}" />
-        <strong>${place.name}</strong><br/>
-        ${place.type}<br/>
-        ${place.address}<br/>
-        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
-        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
-      `;
-
-      document.getElementById('parks-section').appendChild(el);
-    });
-
-    resultsDiv.innerHTML += `<div id="eats-section"><h2>Restaurants & Bars</h2></div>`;
-    restaurantsAndBars.forEach(place => {
-      const el = document.createElement('div');
-      el.className = 'place-card';
-      el.innerHTML = `
-        <img src="${place.photo}" alt="${place.name}" />
-        <strong>${place.name}</strong><br/>
-        ${place.type}<br/>
-        ${place.address}<br/>
-        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
-        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
-      `;
-
-      document.getElementById('eats-section').appendChild(el);
-    });
-
-    resultsDiv.innerHTML += `<div id="activities-section"><h2>Things to Do</h2></div>`;
-    activities.forEach(place => {
-      const el = document.createElement('div');
-      el.className = 'place-card';
-      el.innerHTML = `
-        <img src="${place.photo}" alt="${place.name}" />
-        <strong>${place.name}</strong><br/>
-        ${place.type}<br/>
-        ${place.address}<br/>
-        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
-        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
-      `;
-      document.getElementById('activities-section').appendChild(el);
+    placeSections.forEach(section => {
+      resultsDiv.innerHTML += `<div id="${section.id}"><h2>${section.title}</h2></div>`;
+      section.data.forEach(place => {
+        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+        const el = document.createElement('div');
+        el.className = 'place-card';
+        el.innerHTML = `
+          <img src="${place.photo}" alt="${place.name}" />
+          <strong>${place.name}</strong><br/>
+          ${place.type || ''}<br/>
+          ${place.address}<br/>
+          ${place.rating ? `⭐ ${place.rating}` : ''}<br/>
+          <small>❤️ ${place.favCount} favorites</small><br/>
+          <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
+          <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+        `;
+        document.getElementById(section.id).appendChild(el);
+      });
     });
 
   } catch (err) {
@@ -124,8 +170,7 @@ async function searchEvents() {
   }
 }
 
-function addToFavoritesFromIndex(index) {
-  const event = latestEvents[index];
+function addEventToFavorites(event) {
   const email = localStorage.getItem('email');
   if (!event || !email) {
     alert("Please log in to save favorites.");
@@ -141,12 +186,6 @@ function addToFavoritesFromIndex(index) {
   .then(data => {
     if (data.success) {
       favorites.push(event);
-      const card = document.querySelectorAll('.event-card')[index];
-      if (data.alsoFavoritedBy?.length > 0) {
-        const matchDiv = document.createElement('div');
-        matchDiv.innerHTML = `<small>Also favorited by: ${data.alsoFavoritedBy.join(', ')}</small>`;
-        card.appendChild(matchDiv);
-      }
       alert(`Added "${event.name}" to your favorites!`);
     } else {
       alert('Failed to save favorite.');
@@ -306,7 +345,8 @@ function addFriend() {
   const statusEl = document.getElementById('friendStatus');
 
   if (!user_email || !friend_email) {
-    alert("You must be logged in and enter a friend's email.");
+    statusEl.textContent = "❌ You must be logged in and enter a friend's email.";
+    statusEl.style.color = 'red';
     return;
   }
 
@@ -318,18 +358,46 @@ function addFriend() {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      statusEl.textContent = `✅ Success`;
-      setTimeout(() => location.reload(), 1500); // Auto-refresh after 1.5s
+      statusEl.textContent = "✅ Friend added!";
+      statusEl.style.color = 'green';
+      setTimeout(() => location.reload(), 1000);
     } else {
       statusEl.textContent = `❌ ${data.error}`;
       statusEl.style.color = 'red';
     }
   })
   .catch(err => {
+    console.error("Add friend error:", err);
     statusEl.textContent = "❌ Network error. Try again later.";
     statusEl.style.color = 'red';
-    console.error("Add friend error:", err);
   });
+}
+
+function applySorting() {
+  const sortBy = document.getElementById('sort').value;
+
+  const sortFunction = (a, b) => {
+    if (sortBy === 'alphabetical') {
+      return a.name.localeCompare(b.name);
+    } else if (sortBy === 'rating') {
+      return (b.rating || 0) - (a.rating || 0);
+    } else if (sortBy === 'popular') {
+      return (b.favCount || 0) - (a.favCount || 0);
+    }
+    return 0;
+  };
+
+  // Apply to in-memory lists and re-render
+  if (window.allPlaces) {
+    for (const category in window.allPlaces) {
+      window.allPlaces[category].sort(sortFunction);
+    }
+  }
+  if (window.latestEvents) {
+    window.latestEvents.sort(sortFunction);
+  }
+
+  renderSortedResults(); // You’ll define this to rebuild the DOM
 }
 
 async function loadFriends() {
@@ -369,7 +437,7 @@ function renderAuthButton() {
   const authButton = document.getElementById('authButton');
   const email = localStorage.getItem('email');
   if (authButton) {
-    authButton.textContent = email ? 'Logout' : 'Login';
+    authButton.textContent = email ? 'Logout' : 'Login/signup';
   }
 }
 
@@ -397,6 +465,12 @@ async function loadFavorites() {
   }
 }
 
+function toggleDarkMode() {
+  const body = document.body;
+  body.classList.toggle('dark-mode');
+  localStorage.setItem('darkMode', body.classList.contains('dark-mode'));
+}
+
 window.addEventListener('scroll', () => {
   const btn = document.getElementById('backToTop');
   if (btn) btn.style.display = window.scrollY > 700 ? 'block' : 'none';
@@ -405,10 +479,76 @@ window.addEventListener('scroll', () => {
 document.addEventListener('DOMContentLoaded', () => {
   renderAuthButton();
   loadFavorites();
-});
+  loadFriends();
 
-document.addEventListener('DOMContentLoaded', () => {
-  renderAuthButton();
-  loadFavorites();
-  loadFriends(); // 👈 Add this line
-});
+  // Restore dark mode
+  if (localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark-mode');
+  }
+
+  async function loadFeaturedEvents() {
+  const container = document.getElementById('featuredEventContainer');
+  if (!container) return;
+
+  const cities = ['New York, NY', 'London, UK', 'Sydney, AU', 'Berlin, DE', 'Toronto, CA', 'Barcelona, ES', 'Los Angeles, CA'];
+  const shownCities = [];
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const date = tomorrow.toISOString().split('T')[0];
+
+  async function showNextEvent() {
+    let city;
+
+    // Choose a new city not in the last 5 shown
+    const availableCities = cities.filter(c => !shownCities.includes(c));
+    if (availableCities.length === 0) {
+      shownCities.length = 0; // Reset if all cities have been used recently
+      city = cities[Math.floor(Math.random() * cities.length)];
+    } else {
+      city = availableCities[Math.floor(Math.random() * availableCities.length)];
+    }
+
+    shownCities.push(city);
+    if (shownCities.length > 5) shownCities.shift(); // Keep only last 5
+
+    try {
+      const res = await fetch(`https://socially-1-rm6w.onrender.com/api/events?city=${encodeURIComponent(city)}&date=${date}`);
+      const data = await res.json();
+
+      if (data.events && data.events.length > 0) {
+        const randomEvent = data.events[Math.floor(Math.random() * data.events.length)];
+        container.innerHTML = `
+          <img src="${randomEvent.image}" alt="${randomEvent.name}" />
+          <strong>${randomEvent.name}</strong><br/>
+          ${randomEvent.date}<br/>
+          ${randomEvent.venue}<br/>
+          <a href="${randomEvent.url}" target="_blank">View Event</a><br/>
+          <small>${randomEvent.source} – ${city}</small>
+        `;
+      } else {
+        container.innerHTML = `No events found for ${city}.`;
+      }
+    } catch (err) {
+      console.error("Error loading featured event:", err);
+      container.innerHTML = "Failed to load featured events.";
+    }
+  }
+
+  // First call immediately
+  await showNextEvent();
+
+  // Then every 7 seconds
+  setInterval(showNextEvent, 7000);
+}
+
+loadFeaturedEvents();
+
+window.onclick = function(event) {
+  if (!event.target.matches('.dropdown button')) {
+    const dropdowns = document.getElementsByClassName("dropdown-content");
+    for (let i = 0; i < dropdowns.length; i++) {
+      dropdowns[i].style.display = "none";
+    }
+  }
+}});

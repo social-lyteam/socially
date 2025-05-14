@@ -246,3 +246,21 @@ app.get('/api/places', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
+
+app.post('/api/favorites/count', async (req, res) => {
+  const { type } = req.body;
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('data->>name, count(*)', { count: 'exact' })
+    .eq('type', type)
+    .group('data->>name');
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const counts = {};
+  data.forEach(row => {
+    counts[row['data->>name']] = row.count;
+  });
+
+  res.json(counts);
+});
