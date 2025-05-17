@@ -12,7 +12,9 @@
 
  <header>
   <img src="favicon.png" alt="social.ly logo" class="app-logo" onclick="window.location.href='index.html'" />
+    <nav id="top-left"></nav>
   <div class="dropdown">
+    <nav id="top-right"></nav>
     <button onclick="toggleDropdown()">☰</button>
     <div id="dropdownMenu" class="dropdown-content">
       <button id="authButton" onclick="handleAuthClick()">Login/signup</button>
@@ -30,14 +32,17 @@
       <input type="date" id="datetime" />
       <input type="text" id="city" placeholder="City" />
       <input type="text" id="state" placeholder="State/Province/Country" />
+      <button onclick="useCurrentLocation()">📍 Use My Location</button>
       <button onclick="searchEvents()">Search</button>
     </section>
-    <label for="sort">Sort by:</label>
-    <select id="sortOption">
-      <option value="alphabetical">Sort by: Alphabetical</option>
-      <option value="highestRated">Sort by: Highest Rated</option>
-      <option value="mostPopular">Sort by: Most Popular</option>
-    </select>
+
+    <label for="sortOption">Sort by:</label>
+      <select id="sortOption" onchange="applySorting()">
+        <option value="default">Default</option>
+        <option value="alphabetical">Alphabetical</option>
+        <option value="rating">Rating</option>
+        <option value="distance">Distance</option>
+      </select>
 
     <section id="addFriendSection" style="display:none; margin-top: 30px;">
       <h3>Add a Friend</h3>

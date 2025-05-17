@@ -199,6 +199,8 @@ app.get('/api/places', async (req, res) => {
           type: 'park',
           address: p.formatted_address,
           rating: p.rating,
+          lat: p.geometry?.location?.lat,
+          lng: p.geometry?.location?.lng,
           photo: p.photos?.[0] ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}` : 'https://placehold.co/300x200?text=No+Image'
         });
       }
@@ -215,6 +217,8 @@ app.get('/api/places', async (req, res) => {
             type,
             address: p.formatted_address,
             rating: p.rating,
+            lat: p.geometry?.location?.lat,
+            lng: p.geometry?.location?.lng,
             photo: p.photos?.[0] ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}` : 'https://placehold.co/300x200?text=No+Image'
           });
         }
@@ -231,6 +235,8 @@ app.get('/api/places', async (req, res) => {
           type: keyword,
           address: p.formatted_address,
           rating: p.rating,
+          lat: p.geometry?.location?.lat,
+          lng: p.geometry?.location?.lng,
           photo: p.photos?.[0] ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}` : 'https://placehold.co/300x200?text=No+Image'
         });
       });

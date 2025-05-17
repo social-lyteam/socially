@@ -1,6 +1,7 @@
 let favorites = [];
 let favoritePlaces = [];
 let latestEvents = [];
+let userCoords = null; // Stores current location
 
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -19,15 +20,6 @@ function scrollToEats() {
 function scrollToActivities() {
   const el = document.getElementById('activities-section');
   if (el) el.scrollIntoView({ behavior: 'smooth' });
-}
-
-async function fetchPopularityCounts(type) {
-  const res = await fetch('https://socially-1-rm6w.onrender.com/api/favorites/count', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type })
-  });
-  return await res.json();
 }
 
 // Toggle dropdown menu
@@ -67,12 +59,62 @@ function handleAuthClick() {
   }
 }
 
+function useCurrentLocation() {
+  if (!navigator.geolocation) {
+    alert("Geolocation is not supported by your browser.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async (position) => {
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+
+    userCoords = { lat, lng }; // Save for distance sorting
+
+    try {
+      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyA42IF4OTsvdq0kaUiaCxxqLXqPgEECcng`);
+      const data = await response.json();
+
+      const location = data.results[0]?.address_components;
+      if (!location) {
+        alert("Could not determine your location.");
+        return;
+      }
+
+      const cityObj = location.find(c => c.types.includes("locality") || c.types.includes("postal_town"));
+      const stateObj = location.find(c => c.types.includes("administrative_area_level_1") || c.types.includes("country"));
+
+      document.getElementById('city').value = cityObj?.long_name || '';
+      document.getElementById('state').value = stateObj?.long_name || '';
+    } catch (err) {
+      console.error("Geocoding failed:", err);
+      alert("Failed to get location details.");
+    }
+  }, () => {
+    alert("Failed to get your location.");
+  });
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
+
 async function searchEvents() {
   const datetimeInput = document.getElementById('datetime').value;
   const city = document.getElementById('city').value.trim();
   const state = document.getElementById('state').value.trim();
-  const sortOption = document.getElementById('sortOption')?.value || 'alphabetical';
   const location = `${city}, ${state}`;
+  const sortOption = document.getElementById('sortOption')?.value || 'default';
+  const sortedParks = sortPlaces(parks, sortOption);
+  const sortedEats = sortPlaces(restaurantsAndBars, sortOption);
+  const sortedActivities = sortPlaces(activities, sortOption);
 
   if (!datetimeInput || !city || !state) {
     alert('Please enter a date/time, city, and state/province/country.');
@@ -80,88 +122,93 @@ async function searchEvents() {
   }
 
   const date = datetimeInput;
+
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = "<h2>Searching...</h2>";
 
   try {
-    // Fetch data + popularity counts in parallel
-    const [eventsRes, placesRes, eventCounts, placeCounts] = await Promise.all([
-      fetch(`https://socially-1-rm6w.onrender.com/api/events?city=${encodeURIComponent(location)}&date=${date}`),
-      fetch(`https://socially-1-rm6w.onrender.com/api/places?city=${encodeURIComponent(location)}&datetime=${encodeURIComponent(date)}`),
-      fetchPopularityCounts('event'),
-      fetchPopularityCounts('place')
-    ]);
-
+    const eventsRes = await fetch(`https://socially-1-rm6w.onrender.com/api/events?city=${encodeURIComponent(location)}&date=${date}`);
     const eventsData = await eventsRes.json();
+
+    const placesRes = await fetch(`https://socially-1-rm6w.onrender.com/api/places?city=${encodeURIComponent(location)}&datetime=${encodeURIComponent(date)}`);
     const placesData = await placesRes.json();
-
-    // Map name -> count
-    const eventFavMap = Object.fromEntries(eventCounts.map(e => [e.name, e.count]));
-    const placeFavMap = Object.fromEntries(placeCounts.map(p => [p.name, p.count]));
-
-    // Inject favCount into data
-    eventsData.events.forEach(e => e.favCount = eventFavMap[e.name] || 0);
-    latestEvents = eventsData.events;
-    const { parks, restaurantsAndBars, activities } = placesData.places;
-    parks.forEach(p => p.favCount = placeFavMap[p.name] || 0);
-    restaurantsAndBars.forEach(p => p.favCount = placeFavMap[p.name] || 0);
-    activities.forEach(p => p.favCount = placeFavMap[p.name] || 0);
-
-    const sortBy = (array) => {
-      if (sortOption === 'alphabetical') {
-        return array.sort((a, b) => a.name.localeCompare(b.name));
-      } else if (sortOption === 'highestRated') {
-        return array.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-      } else if (sortOption === 'mostPopular') {
-        return array.sort((a, b) => (b.favCount || 0) - (a.favCount || 0));
-      }
-      return array;
-    };
 
     document.getElementById('skipButtons').style.display = 'block';
 
     // Render Events
     resultsDiv.innerHTML = "<h2>Events:</h2>";
-    sortBy(eventsData.events).forEach((event, index) => {
-      const el = document.createElement('div');
-      el.className = 'event-card';
-      el.innerHTML = `
-        <img src="${event.image}" alt="${event.name}" />
-        <strong>${event.name}</strong><br/>
-        ${event.date}<br/>
-        ${event.venue}<br/>
-        <a href="${event.url}" target="_blank">View Event</a><br/>
-        <small>❤️ ${event.favCount} favorites | Source: ${event.source}</small><br/>
-        <button onclick='addEventToFavorites(${JSON.stringify(event).replace(/'/g, "\\'")})'>❤️ Favorite</button>
-      `;
-      resultsDiv.appendChild(el);
-    });
+    if (eventsData.events && eventsData.events.length > 0) {
+      eventsData.events.forEach((event, index) => {
+        const el = document.createElement('div');
+        el.className = 'event-card';
+        el.innerHTML = `
+          <img src="${event.image}" alt="${event.name}" />
+          <strong>${event.name}</strong><br/>
+          ${event.date}<br/>
+          ${event.venue}<br/>
+          <a href="${event.url}" target="_blank">View Event</a><br/>
+          <small>Source: ${event.source}</small><br/>
+          <button onclick="addToFavoritesFromIndex(${index})">❤️ Favorite</button>
+        `;
+        resultsDiv.appendChild(el);
+      });
+    } else {
+      resultsDiv.innerHTML += "<p>No events found.</p>";
+    }
 
     // Render Places
-    const placeSections = [
-      { title: 'Parks', data: sortBy(parks), id: 'parks-section' },
-      { title: 'Restaurants & Bars', data: sortBy(restaurantsAndBars), id: 'eats-section' },
-      { title: 'Things to Do', data: sortBy(activities), id: 'activities-section' }
-    ];
+    const { parks, restaurantsAndBars, activities } = placesData.places;
 
-    placeSections.forEach(section => {
-      resultsDiv.innerHTML += `<div id="${section.id}"><h2>${section.title}</h2></div>`;
-      section.data.forEach(place => {
-        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
-        const el = document.createElement('div');
-        el.className = 'place-card';
-        el.innerHTML = `
-          <img src="${place.photo}" alt="${place.name}" />
-          <strong>${place.name}</strong><br/>
-          ${place.type || ''}<br/>
-          ${place.address}<br/>
-          ${place.rating ? `⭐ ${place.rating}` : ''}<br/>
-          <small>❤️ ${place.favCount} favorites</small><br/>
-          <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
-          <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
-        `;
-        document.getElementById(section.id).appendChild(el);
-      });
+    resultsDiv.innerHTML += `<div id="parks-section"><h2>Parks</h2></div>`;
+    parks.forEach(place => {
+      const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+      const el = document.createElement('div');
+      el.className = 'place-card';
+      el.innerHTML = `
+        <img src="${place.photo}" alt="${place.name}" />
+        <strong>${place.name}</strong><br/>
+        ${place.address}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
+        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+      `;
+
+      document.getElementById('parks-section').appendChild(el);
+    });
+
+    resultsDiv.innerHTML += `<div id="eats-section"><h2>Restaurants & Bars</h2></div>`;
+    restaurantsAndBars.forEach(place => {
+      const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+      const el = document.createElement('div');
+      el.className = 'place-card';
+      el.innerHTML = `
+        <img src="${place.photo}" alt="${place.name}" />
+        <strong>${place.name}</strong><br/>
+        ${place.address}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
+        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+      `;
+
+      document.getElementById('eats-section').appendChild(el);
+    });
+
+    resultsDiv.innerHTML += `<div id="activities-section"><h2>Things to Do</h2></div>`;
+    activities.forEach(place => {
+      const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+      const el = document.createElement('div');
+      el.className = 'place-card';
+      el.innerHTML = `
+        <img src="${place.photo}" alt="${place.name}" />
+        <strong>${place.name}</strong><br/>
+        ${place.type}<br/>
+        ${place.address}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
+        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+      `;
+
+      document.getElementById('activities-section').appendChild(el);
     });
 
   } catch (err) {
@@ -170,7 +217,8 @@ async function searchEvents() {
   }
 }
 
-function addEventToFavorites(event) {
+function addToFavoritesFromIndex(index) {
+  const event = latestEvents[index];
   const email = localStorage.getItem('email');
   if (!event || !email) {
     alert("Please log in to save favorites.");
@@ -186,6 +234,12 @@ function addEventToFavorites(event) {
   .then(data => {
     if (data.success) {
       favorites.push(event);
+      const card = document.querySelectorAll('.event-card')[index];
+      if (data.alsoFavoritedBy?.length > 0) {
+        const matchDiv = document.createElement('div');
+        matchDiv.innerHTML = `<small>Also favorited by: ${data.alsoFavoritedBy.join(', ')}</small>`;
+        card.appendChild(matchDiv);
+      }
       alert(`Added "${event.name}" to your favorites!`);
     } else {
       alert('Failed to save favorite.');
@@ -373,33 +427,6 @@ function addFriend() {
   });
 }
 
-function applySorting() {
-  const sortBy = document.getElementById('sort').value;
-
-  const sortFunction = (a, b) => {
-    if (sortBy === 'alphabetical') {
-      return a.name.localeCompare(b.name);
-    } else if (sortBy === 'rating') {
-      return (b.rating || 0) - (a.rating || 0);
-    } else if (sortBy === 'popular') {
-      return (b.favCount || 0) - (a.favCount || 0);
-    }
-    return 0;
-  };
-
-  // Apply to in-memory lists and re-render
-  if (window.allPlaces) {
-    for (const category in window.allPlaces) {
-      window.allPlaces[category].sort(sortFunction);
-    }
-  }
-  if (window.latestEvents) {
-    window.latestEvents.sort(sortFunction);
-  }
-
-  renderSortedResults(); // You’ll define this to rebuild the DOM
-}
-
 async function loadFriends() {
   const email = localStorage.getItem('email');
   if (!email) return;
@@ -486,6 +513,22 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.add('dark-mode');
   }
 
+  document.getElementById('sortOption')?.addEventListener('change', () => {
+  const resultsExist = document.getElementById('results')?.children.length > 0;
+  if (resultsExist) searchEvents(); // refresh results with new sort
+});
+
+  if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      userCoords = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
+    },
+    err => console.warn("Geolocation permission denied or failed.", err)
+  );
+}
   async function loadFeaturedEvents() {
   const container = document.getElementById('featuredEventContainer');
   if (!container) return;
@@ -540,6 +583,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Then every 7 seconds
   setInterval(showNextEvent, 7000);
+}
+
+function sortPlaces(array, criterion) {
+  if (criterion === 'alphabetical') {
+    return array.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (criterion === 'rating') {
+    return array.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  } else if (criterion === 'distance' && userCoords) {
+    return array.sort((a, b) => {
+      const distA = getDistance(userCoords, a);
+      const distB = getDistance(userCoords, b);
+      return distA - distB;
+    });
+  }
+  return array; // default: no sort
+}
+
+function getDistance(user, place) {
+  if (!place.lat || !place.lng) return Infinity;
+  const dx = user.lat - place.lat;
+  const dy = user.lng - place.lng;
+  return Math.sqrt(dx * dx + dy * dy);
 }
 
 loadFeaturedEvents();
