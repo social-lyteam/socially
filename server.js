@@ -201,6 +201,7 @@ app.get('/api/events', async (req, res) => {
     const tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&city=${encodeURIComponent(city)}&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
     const tmRes = await fetch(tmUrl);
     const tmData = await tmRes.json();
+    console.log('Ticketmaster response:', JSON.stringify(tmData, null, 2));
     const ticketmasterEvents = (tmData._embedded?.events || []).map(event => ({
       name: event.name,
       date: event.dates?.start?.localDate || '',
@@ -253,7 +254,7 @@ app.get('/api/events', async (req, res) => {
         name: event.title,
         date: event.start.split('T')[0],
         venue: event.entities?.[0]?.name || '',
-        url: `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.location + event.date?.[0])}`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.location?.[0])}`,
         image: getPredictHQImage(event.category),
         source: 'PredictHQ'
      };
