@@ -37,17 +37,19 @@
       <button onclick="searchEvents()">Search</button>
     </section>
 
-    <div id="createEventSection" style="display: none;">
-      <h2>Create Your Event</h2>
-      <input type="text" id="eventName" placeholder="Event Name" required><br/>
-      <input type="text" id="eventVenue" placeholder="Venue"><br/>
-      <input type="text" id="eventCity" placeholder="City" required><br/>
-      <input type="text" id="eventState" placeholder="State/Country" required><br/>
-      <input type="date" id="eventDate" required><br/>
-      <input type="url" id="eventUrl" placeholder="Event URL (optional)"><br/>
-      <input type="file" id="eventImage" accept="image/*"><br/>
-      <button onclick="submitEvent()">Submit Event</button>
-      <p id="eventStatus"></p>
+    <div id="createEventSection" style="display: none; padding: 1rem; max-width: 600px; margin: auto;">
+      <h2 class="form-title">Create an Event</h2>
+      <form id="createEventForm" class="event-form">
+        <input type="text" id="eventName" placeholder="Event Name *" required />
+       <input type="text" id="eventVenue" placeholder="Venue" />
+        <input type="text" id="eventCity" placeholder="City *" required />
+        <input type="text" id="eventState" placeholder="State/Province/Country *" required />
+        <input type="date" id="eventDate" required />
+        <input type="url" id="eventUrl" placeholder="Event URL (optional)" />
+        <input type="file" id="eventImage" accept="image/*" required />
+        <button type="button" onclick="submitEvent()">📤 Submit Event</button>
+        <p id="eventStatus" class="event-status"></p>
+      </form>
     </div>
 
     <section id="addFriendSection" style="display:none; margin-top: 30px;">

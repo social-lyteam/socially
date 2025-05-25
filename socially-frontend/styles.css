@@ -133,6 +133,65 @@ body.dark-mode .tagline {
   box-sizing: border-box;
 }
 
+.event-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--card-bg, #fff);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.event-form input,
+.event-form button {
+  padding: 0.75rem;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #ccc;
+  font-family: inherit;
+}
+
+.event-form input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.2);
+}
+
+.event-form button {
+  background: linear-gradient(to right, #4CAF50, #45A049);
+  color: white;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.event-form button:hover {
+  background: linear-gradient(to right, #45A049, #3e8e41);
+}
+
+.event-status {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.form-title {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+body.dark-mode .event-form {
+  background: #222;
+  color: #fff;
+}
+body.dark-mode .event-form input,
+body.dark-mode .event-form button {
+  background: #333;
+  color: #fff;
+  border-color: #555;
+}
+
 #featured {
   margin: 30px auto;
   padding: 20px;

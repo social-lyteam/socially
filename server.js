@@ -187,11 +187,12 @@ app.get('/api/events', async (req, res) => {
   if (!city || !date) return res.status(400).json({ error: 'Missing city or date' });
 
   try {
+    // 1. Ticketmaster Events
     const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&city=${encodeURIComponent(city)}&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
     const tmRes = await fetch(url);
     const tmData = await tmRes.json();
 
-    const events = (tmData._embedded?.events || []).map(event => ({
+    const ticketmasterEvents = (tmData._embedded?.events || []).map(event => ({
       name: event.name,
       date: event.dates?.start?.localDate || '',
       venue: event._embedded?.venues?.[0]?.name || '',
@@ -200,7 +201,20 @@ app.get('/api/events', async (req, res) => {
       source: 'Ticketmaster'
     }));
 
-    res.json({ events });
+    // 2. User-Created Events (from Supabase)
+    const { data: customEvents, error } = await supabase
+      .from('custom_events')
+      .select('*')
+      .ilike('city', `%${city}%`)
+      .eq('date', date);
+
+    if (error) {
+      console.error('Error fetching custom events:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ events: [...ticketmasterEvents, ...(customEvents || [])] });
+
   } catch (err) {
     console.error('Error fetching events:', err);
     res.status(500).json({ error: 'Error fetching events' });
