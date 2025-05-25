@@ -21,6 +21,14 @@ const PREDICTHQ_ACCESS_TOKEN = '-86fLNgbsEBmcDZR33fE-6tccuaHCbIx3qn0gfK9';
 app.use(cors());
 app.use(express.json());
 
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
 app.get('/', (req, res) => {
   res.send('✅ Supabase-connected API is running');
 });
@@ -203,20 +211,40 @@ app.get('/api/events', async (req, res) => {
     }));
 
     // 2. PredictHQ
-    const phqRes = await fetch(`https://api.predicthq.com/v1/events/?q=${encodeURIComponent(city)}&start.gte=${date}T00:00:00Z&start.lt=${date}T23:59:59Z&limit=20`, {
-      headers: {
-        Authorization: `Bearer ${PREDICTHQ_ACCESS_TOKEN}`
-     }
-    });
+    const phqRes = await fetch(
+      `https://api.predicthq.com/v1/events/?q=${encodeURIComponent(city)}&start.gte=${date}T00:00:00Z&start.lt=${date}T23:59:59Z&limit=20&category=concerts,festivals,expos,conferences,sports,performing-arts,community`,
+      {
+        headers: {
+          Authorization: `Bearer ${PREDICTHQ_ACCESS_TOKEN}`
+        }
+      }
+    );
+
     const phqData = await phqRes.json();
-    const predictHQEvents = (phqData.results || []).map(event => ({
-      name: event.title,
-      date: event.start.split('T')[0],
-      venue: event.entities?.[0]?.name || '',
-      url: `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + city)}`,
-      image: 'https://placehold.co/300x200/0000FF/FFFFFF?text=PredictHQ+Event',
-      source: 'PredictHQ'
-    }));
+    const predictHQEvents = (phqData.results || []).map(event => {
+      const category = event.category || 'other';
+
+      // Assign default image by category
+      const categoryImages = {
+        concerts: 'https://placehold.co/300x200/ff5e5e/fff?text=Concert',
+        sports: 'https://placehold.co/300x200/5eafff/fff?text=Sports',
+        conferences: 'https://placehold.co/300x200/5e5eff/fff?text=Conference',
+        expos: 'https://placehold.co/300x200/ffc85e/000?text=Expo',
+        festivals: 'https://placehold.co/300x200/ff5ec8/fff?text=Festival',
+        community: 'https://placehold.co/300x200/5effa1/000?text=Community',
+        performing_arts: 'https://placehold.co/300x200/905eff/fff?text=Performance',
+        default: 'https://placehold.co/300x200/cccccc/000?text=Event'
+      };
+
+      return {
+        name: event.title,
+        date: event.start.split('T')[0],
+        venue: event.entities?.[0]?.name || '',
+        url: `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.location + event.date?.[0])}`,
+        image: categoryImages[category] || categoryImages.default,
+        source: 'PredictHQ'
+     };
+    });
 
     // 3. Eventbrite
     const ebUrl = `https://www.eventbriteapi.com/v3/events/search/?location.address=${encodeURIComponent(city)}&start_date.range_start=${date}T00:00:00Z&start_date.range_end=${date}T23:59:59Z&expand=venue`;
@@ -242,12 +270,12 @@ app.get('/api/events', async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    const allEvents = [
+    const allEvents = shuffleArray([
       ...ticketmasterEvents,
       ...predictHQEvents,
       ...eventbriteEvents,
       ...(customEvents || [])
-    ];
+    ]);
 
     res.json({ events: allEvents });
 
