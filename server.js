@@ -224,24 +224,37 @@ app.get('/api/events', async (req, res) => {
     const predictHQEvents = (phqData.results || []).map(event => {
       const category = event.category || 'other';
 
-      // Assign default image by category
-      const categoryImages = {
-        concerts: 'https://placehold.co/300x200/ff5e5e/fff?text=Concert',
-        sports: 'https://placehold.co/300x200/5eafff/fff?text=Sports',
-        conferences: 'https://placehold.co/300x200/5e5eff/fff?text=Conference',
-        expos: 'https://placehold.co/300x200/ffc85e/000?text=Expo',
-        festivals: 'https://placehold.co/300x200/ff5ec8/fff?text=Festival',
-        community: 'https://placehold.co/300x200/5effa1/000?text=Community',
-        performing_arts: 'https://placehold.co/300x200/905eff/fff?text=Performance',
-        default: 'https://placehold.co/300x200/cccccc/000?text=Event'
-      };
+      function getPredictHQImage(category) {
+        switch (category) {
+          case 'concerts':
+          case 'performances':
+            return 'https://images.unsplash.com/photo-1507874457470-272b3c8d8ee2?w=800&q=80'; // concert
+          case 'sports':
+            return 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800&q=80'; // sports
+          case 'conferences':
+            return 'https://images.unsplash.com/photo-1581090700227-1e8e8b7ba8d3?w=800&q=80'; // conference
+          case 'festivals':
+            return 'https://images.unsplash.com/photo-1508606572321-901ea443707f?w=800&q=80'; // festival
+          case 'expos':
+            return 'https://images.unsplash.com/photo-1581092787765-82ddee7c1f5e?w=800&q=80'; // expo
+         case 'community':
+            return 'https://images.unsplash.com/photo-1585314061377-f04aa508a96e?w=800&q=80'; // community
+          case 'observances':
+          case 'school-holidays':
+           return 'https://images.unsplash.com/photo-1530077564400-7c5f28f7b3fa?w=800&q=80'; // holiday
+          case 'weather':
+            return 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80'; // weather alert
+          default:
+            return 'https://images.unsplash.com/photo-1472653431158-6364773b2a56?w=800&q=80'; // generic
+       }
+      }
 
       return {
         name: event.title,
         date: event.start.split('T')[0],
         venue: event.entities?.[0]?.name || '',
         url: `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.location + event.date?.[0])}`,
-        image: categoryImages[category] || categoryImages.default,
+        image: getPredictHQImage(event.category),
         source: 'PredictHQ'
      };
     });
