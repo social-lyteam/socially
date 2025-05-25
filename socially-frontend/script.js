@@ -222,6 +222,13 @@ async function searchEvents() {
           <small>Source: ${event.source}</small><br/>
           <button onclick="addToFavoritesFromIndex(${index})">❤️ Favorite</button>
         `;
+
+        if (event.source === 'User') {
+         el.innerHTML += `
+        <button onclick="reportEvent('${event.name}', '${event.date}', '${event.venue}')">🚩 Report</button>
+      `;
+    }
+
         resultsDiv.appendChild(el);
       });
     } else {
@@ -379,6 +386,33 @@ function addPlaceCard(place, section) {
     <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
   `;
   section.appendChild(el);
+}
+
+function reportEvent(name, date, venue) {
+  const email = localStorage.getItem('email'); // Optional
+
+  fetch('https://socially-1-rm6w.onrender.com/api/report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      eventName: name,
+      eventDate: date,
+      eventVenue: venue,
+      reporterEmail: email || null
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('✅ Event reported. Thank you for your feedback.');
+    } else {
+      alert('❌ Failed to report event. Try again later.');
+    }
+  })
+  .catch(err => {
+    console.error('Report error:', err);
+    alert('❌ Network error while reporting.');
+  });
 }
 
 function removeFavorite(name, type) {

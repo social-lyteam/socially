@@ -17,6 +17,7 @@ const TICKETMASTER_API_KEY = 'mPLzpIXal7XLK2mMxFTQgaPOEQMiGRAY';
 const YOUR_EVENTBRITE_TOKEN = 'ZOWUEOQJQ6SPOPRHCFXQ'
 const GOOGLE_PLACES_API_KEY = 'AIzaSyA42IF4OTsvdq0kaUiaCxxqLXqPgEECcng';
 const PREDICTHQ_ACCESS_TOKEN = '-86fLNgbsEBmcDZR33fE-6tccuaHCbIx3qn0gfK9';
+const ALLEVENTS_ACCESS_KEY = 'Phoenix8898!'
 
 app.use(cors());
 app.use(express.json());
@@ -63,6 +64,31 @@ app.post('/api/custom-events', upload.single('image'), async (req, res) => {
   if (!email || !name || !city || !state || !date || !image) {
     return res.status(400).json({ error: 'Missing fields' });
   }
+
+app.post('/api/report', async (req, res) => {
+  const { eventName, eventDate, eventVenue, reporterEmail } = req.body;
+
+  if (!eventName || !eventDate || !eventVenue) {
+    return res.status(400).json({ error: 'Missing event details' });
+  }
+
+  const message = `
+    🚩 Event Reported
+    Name: ${eventName}
+    Date: ${eventDate}
+    Venue: ${eventVenue}
+    Reporter: ${reporterEmail || 'Anonymous'}
+  `;
+
+  // Send to Supabase, log to table, or forward to email via third-party service
+  const { error } = await supabase
+    .from('event_reports')
+    .insert([{ event_name: eventName, event_date: eventDate, event_venue: eventVenue, reporter_email: reporterEmail || null }]);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ success: true });
+});
 
   // Save image to Supabase Storage
   const { data: uploadData, error: uploadErr } = await supabase.storage
@@ -198,10 +224,9 @@ app.get('/api/events', async (req, res) => {
 
   try {
     // 1. Ticketmaster Events
-    const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&city=${encodeURIComponent(city)}&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
-    const tmRes = await fetch(url);
+    const tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&city=${encodeURIComponent(city)}&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
+    const tmRes = await fetch(tmUrl);
     const tmData = await tmRes.json();
-
     const ticketmasterEvents = (tmData._embedded?.events || []).map(event => ({
       name: event.name,
       date: event.dates?.start?.localDate || '',
@@ -274,6 +299,9 @@ app.get('/api/events', async (req, res) => {
       image: event.logo?.url || 'https://placehold.co/300x200?text=No+Image',
       source: 'Eventbrite'
     }));
+
+    // 4. AllEvents
+
 
     // 5. User-created
     const { data: customEvents, error } = await supabase
