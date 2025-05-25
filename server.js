@@ -235,7 +235,7 @@ app.get('/api/events', async (req, res) => {
     }
 
     // 4. AllEvents API
-    const alleventsUrl = `https://api.allevents.in/events/search/?city=${encodeURIComponent(city)}&date=${date}&apikey=5506d19acfdd541258b896c1`;
+    const alleventsUrl = `http://api.allevents.in/events/list/[?city][&state][&country][&sdate][&edate]`;
 
     const aeRes = await fetch(alleventsUrl);
     const aeData = await aeRes.json();
