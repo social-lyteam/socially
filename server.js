@@ -16,6 +16,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TICKETMASTER_API_KEY = 'mPLzpIXal7XLK2mMxFTQgaPOEQMiGRAY';
 const YOUR_EVENTBRITE_TOKEN = 'ZOWUEOQJQ6SPOPRHCFXQ'
 const GOOGLE_PLACES_API_KEY = 'AIzaSyA42IF4OTsvdq0kaUiaCxxqLXqPgEECcng';
+const PREDICTHQ_ACCESS_TOKEN = '-86fLNgbsEBmcDZR33fE-6tccuaHCbIx3qn0gfK9';
 
 app.use(cors());
 app.use(express.json());
@@ -202,14 +203,43 @@ app.get('/api/events', async (req, res) => {
       source: 'Ticketmaster'
     }));
 
+    app.get('/api/predicthq-events', async (req, res) => {
+      const { city, date } = req.query;
+      if (!city || !date) return res.status(400).json({ error: 'Missing city or date' });
+
+      try {
+        const phqRes = await fetch(`https://api.predicthq.com/v1/events/?q=${encodeURIComponent(city)}&start=${date}T00:00:00Z&end=${date}T23:59:59Z&limit=20`, {
+          headers: {
+            Authorization: `Bearer ${PREDICTHQ_ACCESS_TOKEN}`
+          }
+        });
+
+        const phqData = await phqRes.json();
+        const events = phqData.results.map(event => ({
+          name: event.title,
+          date: event.start.split('T')[0],
+          venue: event.entities?.[0]?.name || '',
+          url: event.url || '',
+          image: 'https://placehold.co/300x200?text=PHQ+Event',
+          source: 'PredictHQ'
+        }));
+
+        res.json({ events });
+      } catch (err) {
+        console.error("PredictHQ fetch error:", err);
+        res.status(500).json({ error: 'Failed to fetch PredictHQ events' });
+      }
+    });
+
     // 3. Eventbrite Events
     const eventbriteUrl = `https://www.eventbriteapi.com/v3/events/search/?location.address=${encodeURIComponent(city)}&start_date.range_start=${date}T00:00:00Z&start_date.range_end=${date}T23:59:59Z&expand=venue`;
 
     const ebRes = await fetch(eventbriteUrl, {
       headers: {
-        'Authorization': `Bearer ${YOUR_EVENTBRITE_TOKEN}`
-      }
+       Authorization: `Bearer ZOWUEOQJQ6SPOPRHCFXQ`
+     }
     });
+
     const ebData = await ebRes.json();
     console.log('Eventbrite response:', ebData);
 
@@ -249,7 +279,7 @@ app.get('/api/events', async (req, res) => {
       source: 'AllEvents'
     }));
 
-    res.json({ events: [...ticketmasterEvents, ...eventbriteEvents, ...allEventsEvents, ...(customEvents || [])] });
+    res.json({ events: [...ticketmasterEvents, ...eventbriteEvents, ...predictHQEvents, ...allEventsEvents, ...(customEvents || [])] });
 
   } catch (err) {
     console.error('Error fetching events:', err);
