@@ -203,16 +203,18 @@ app.get('/api/events', async (req, res) => {
     }));
 
     // 2. PredictHQ
-    const phqRes = await fetch(`https://api.predicthq.com/v1/events/?q=${encodeURIComponent(city)}&start=${date}T00:00:00Z&end=${date}T23:59:59Z&limit=20`, {
-      headers: { Authorization: `Bearer ${PREDICTHQ_ACCESS_TOKEN}` }
+    const phqRes = await fetch(`https://api.predicthq.com/v1/events/?q=${encodeURIComponent(city)}&start.gte=${date}T00:00:00Z&start.lt=${date}T23:59:59Z&limit=20`, {
+      headers: {
+        Authorization: `Bearer ${PREDICTHQ_ACCESS_TOKEN}`
+     }
     });
     const phqData = await phqRes.json();
     const predictHQEvents = (phqData.results || []).map(event => ({
       name: event.title,
       date: event.start.split('T')[0],
       venue: event.entities?.[0]?.name || '',
-      url: '',
-      image: 'https://placehold.co/300x200?text=PHQ+Event',
+      url: `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + city)}`,
+      image: 'https://placehold.co/300x200/0000FF/FFFFFF?text=PredictHQ+Event',
       source: 'PredictHQ'
     }));
 
@@ -230,9 +232,6 @@ app.get('/api/events', async (req, res) => {
       image: event.logo?.url || 'https://placehold.co/300x200?text=No+Image',
       source: 'Eventbrite'
     }));
-
-    // 4. AllEvents placeholder (API not yet functional)
-    const allEventsEvents = [];
 
     // 5. User-created
     const { data: customEvents, error } = await supabase
