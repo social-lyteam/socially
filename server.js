@@ -234,7 +234,22 @@ app.get('/api/events', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    res.json({ events: [...ticketmasterEvents, ...eventbriteEvents, ...(customEvents || [])] });
+    // 4. AllEvents API
+    const alleventsUrl = `https://api.allevents.in/events/search/?city=${encodeURIComponent(city)}&date=${date}&apikey=5506d19acfdd541258b896c1`;
+
+    const aeRes = await fetch(alleventsUrl);
+    const aeData = await aeRes.json();
+
+    const allEventsEvents = (aeData.data || []).map(event => ({
+      name: event.eventname || event.title || 'Untitled Event',
+      date: event.start_time.split(' ')[0],
+      venue: event.venue?.venue_name || event.venue_name || '',
+      url: event.event_url || event.eventsite || '',
+      image: event.image_url || 'https://placehold.co/300x200?text=No+Image',
+      source: 'AllEvents'
+    }));
+
+    res.json({ events: [...ticketmasterEvents, ...eventbriteEvents, ...allEventsEvents, ...(customEvents || [])] });
 
   } catch (err) {
     console.error('Error fetching events:', err);
