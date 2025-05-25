@@ -246,7 +246,6 @@ app.get('/api/events', async (req, res) => {
       ...ticketmasterEvents,
       ...predictHQEvents,
       ...eventbriteEvents,
-      ...allEventsEvents,
       ...(customEvents || [])
     ];
 
