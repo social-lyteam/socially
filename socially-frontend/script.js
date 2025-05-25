@@ -35,6 +35,56 @@ function toggleAddFriend() {
   document.getElementById('dropdownMenu').style.display = 'none';
 }
 
+function toggleCreateEvent() {
+  const section = document.getElementById('createEventSection');
+  section.style.display = section.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('dropdownMenu').style.display = 'none';
+}
+
+async function submitEvent() {
+  const email = localStorage.getItem('email');
+  if (!email) {
+    alert("You must be logged in to create an event.");
+    return;
+  }
+
+  const name = document.getElementById('eventName').value;
+  const venue = document.getElementById('eventVenue').value;
+  const city = document.getElementById('eventCity').value;
+  const state = document.getElementById('eventState').value;
+  const date = document.getElementById('eventDate').value;
+  const url = document.getElementById('eventUrl').value;
+  const imageInput = document.getElementById('eventImage');
+  const imageFile = imageInput.files[0];
+
+  if (!name || !city || !state || !date || !imageFile) {
+    alert("Please fill in all required fields.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('email', email);
+  formData.append('name', name);
+  formData.append('venue', venue);
+  formData.append('city', city);
+  formData.append('state', state);
+  formData.append('date', date);
+  formData.append('url', url);
+  formData.append('image', imageFile);
+
+  try {
+    const res = await fetch('https://socially-1-rm6w.onrender.com/api/custom-events', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    document.getElementById('eventStatus').textContent = data.success ? "✅ Event created!" : `❌ ${data.error}`;
+  } catch (err) {
+    console.error("Error submitting event:", err);
+    document.getElementById('eventStatus').textContent = "❌ Submission failed.";
+  }
+}
+
 function toggleDarkMode() {
   document.body.classList.toggle('dark-mode');
   localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
@@ -106,15 +156,34 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c; // Distance in km
 }
 
+function sortPlaces(array, criterion) {
+  if (criterion === 'alphabetical') {
+    return array.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (criterion === 'rating') {
+    return array.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  } else if (criterion === 'distance' && userCoords) {
+    return array.sort((a, b) => {
+      const distA = getDistance(userCoords, a);
+      const distB = getDistance(userCoords, b);
+      return distA - distB;
+    });
+  }
+  return array; // default: no sort
+}
+
+function getDistance(user, place) {
+  if (!place.lat || !place.lng) return Infinity;
+  const dx = user.lat - place.lat;
+  const dy = user.lng - place.lng;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 async function searchEvents() {
   const datetimeInput = document.getElementById('datetime').value;
   const city = document.getElementById('city').value.trim();
   const state = document.getElementById('state').value.trim();
   const location = `${city}, ${state}`;
   const sortOption = document.getElementById('sortOption')?.value || 'default';
-  const sortedParks = sortPlaces(parks, sortOption);
-  const sortedEats = sortPlaces(restaurantsAndBars, sortOption);
-  const sortedActivities = sortPlaces(activities, sortOption);
 
   if (!datetimeInput || !city || !state) {
     alert('Please enter a date/time, city, and state/province/country.');
@@ -134,6 +203,8 @@ async function searchEvents() {
     const placesData = await placesRes.json();
 
     document.getElementById('skipButtons').style.display = 'block';
+
+    document.getElementById('sortWrapper').style.display = 'block';
 
     // Render Events
     resultsDiv.innerHTML = "<h2>Events:</h2>";
@@ -159,16 +230,23 @@ async function searchEvents() {
     // Render Places
     const { parks, restaurantsAndBars, activities } = placesData.places;
 
+    const sortedParks = sortPlaces(parks, sortOption);
+    const sortedEats = sortPlaces(restaurantsAndBars, sortOption);
+    const sortedActivities = sortPlaces(activities, sortOption);
+
     resultsDiv.innerHTML += `<div id="parks-section"><h2>Parks</h2></div>`;
-    parks.forEach(place => {
+    sortedParks.forEach(place => {
       const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+      const distanceText = (userCoords && sortOption === 'distance' && place.lat && place.lng)
+        ? `<br/><small>📍 ${calculateDistance(userCoords.lat, userCoords.lng, place.lat, place.lng).toFixed(1)} km away</small>`
+        : '';
       const el = document.createElement('div');
       el.className = 'place-card';
       el.innerHTML = `
         <img src="${place.photo}" alt="${place.name}" />
         <strong>${place.name}</strong><br/>
         ${place.address}<br/>
-        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}${distanceText}<br/>
         <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
         <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
       `;
@@ -177,15 +255,18 @@ async function searchEvents() {
     });
 
     resultsDiv.innerHTML += `<div id="eats-section"><h2>Restaurants & Bars</h2></div>`;
-    restaurantsAndBars.forEach(place => {
+    sortedEats.forEach(place => {
       const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+      const distanceText = (userCoords && sortOption === 'distance' && place.lat && place.lng)
+        ? `<br/><small>📍 ${calculateDistance(userCoords.lat, userCoords.lng, place.lat, place.lng).toFixed(1)} km away</small>`
+        : '';
       const el = document.createElement('div');
       el.className = 'place-card';
       el.innerHTML = `
         <img src="${place.photo}" alt="${place.name}" />
         <strong>${place.name}</strong><br/>
         ${place.address}<br/>
-        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}${distanceText}<br/>
         <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
         <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
       `;
@@ -194,16 +275,18 @@ async function searchEvents() {
     });
 
     resultsDiv.innerHTML += `<div id="activities-section"><h2>Things to Do</h2></div>`;
-    activities.forEach(place => {
+    sortedActivities.forEach(place => {
       const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+      const distanceText = (userCoords && sortOption === 'distance' && place.lat && place.lng)
+        ? `<br/><small>📍 ${calculateDistance(userCoords.lat, userCoords.lng, place.lat, place.lng).toFixed(1)} km away</small>`
+        : '';
       const el = document.createElement('div');
       el.className = 'place-card';
       el.innerHTML = `
         <img src="${place.photo}" alt="${place.name}" />
         <strong>${place.name}</strong><br/>
-        ${place.type}<br/>
         ${place.address}<br/>
-        ${place.rating ? `⭐ ${place.rating}` : ""}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}${distanceText}<br/>
         <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
         <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
       `;
@@ -492,12 +575,6 @@ async function loadFavorites() {
   }
 }
 
-function toggleDarkMode() {
-  const body = document.body;
-  body.classList.toggle('dark-mode');
-  localStorage.setItem('darkMode', body.classList.contains('dark-mode'));
-}
-
 window.addEventListener('scroll', () => {
   const btn = document.getElementById('backToTop');
   if (btn) btn.style.display = window.scrollY > 700 ? 'block' : 'none';
@@ -570,7 +647,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <small>${randomEvent.source} – ${city}</small>
         `;
       } else {
-        container.innerHTML = `No events found for ${city}.`;
+        console.log(`Skipping ${city}, no events found.`);
+        await showNextEvent(); // Automatically try the next city
       }
     } catch (err) {
       console.error("Error loading featured event:", err);
@@ -583,28 +661,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Then every 7 seconds
   setInterval(showNextEvent, 7000);
-}
-
-function sortPlaces(array, criterion) {
-  if (criterion === 'alphabetical') {
-    return array.sort((a, b) => a.name.localeCompare(b.name));
-  } else if (criterion === 'rating') {
-    return array.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  } else if (criterion === 'distance' && userCoords) {
-    return array.sort((a, b) => {
-      const distA = getDistance(userCoords, a);
-      const distB = getDistance(userCoords, b);
-      return distA - distB;
-    });
-  }
-  return array; // default: no sort
-}
-
-function getDistance(user, place) {
-  if (!place.lat || !place.lng) return Infinity;
-  const dx = user.lat - place.lat;
-  const dy = user.lng - place.lng;
-  return Math.sqrt(dx * dx + dy * dy);
 }
 
 loadFeaturedEvents();

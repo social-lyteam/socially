@@ -20,6 +20,7 @@
       <button id="authButton" onclick="handleAuthClick()">Login/signup</button>
       <button onclick="viewFavorites()">View Favorites ❤️</button>
       <button onclick="toggleAddFriend()">Add Friend</button>
+      <button onclick="toggleCreateEvent()">Create Event</button>
       <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
     </div>
   </div>
@@ -36,13 +37,18 @@
       <button onclick="searchEvents()">Search</button>
     </section>
 
-    <label for="sortOption">Sort by:</label>
-      <select id="sortOption" onchange="applySorting()">
-        <option value="default">Default</option>
-        <option value="alphabetical">Alphabetical</option>
-        <option value="rating">Rating</option>
-        <option value="distance">Distance</option>
-      </select>
+    <div id="createEventSection" style="display: none;">
+      <h2>Create Your Event</h2>
+      <input type="text" id="eventName" placeholder="Event Name" required><br/>
+      <input type="text" id="eventVenue" placeholder="Venue"><br/>
+      <input type="text" id="eventCity" placeholder="City" required><br/>
+      <input type="text" id="eventState" placeholder="State/Country" required><br/>
+      <input type="date" id="eventDate" required><br/>
+      <input type="url" id="eventUrl" placeholder="Event URL (optional)"><br/>
+      <input type="file" id="eventImage" accept="image/*"><br/>
+      <button onclick="submitEvent()">Submit Event</button>
+      <p id="eventStatus"></p>
+    </div>
 
     <section id="addFriendSection" style="display:none; margin-top: 30px;">
       <h3>Add a Friend</h3>
@@ -55,6 +61,15 @@
       <h2>🌍 Featured Events Around the World</h2>
       <div id="featuredEventContainer" class="event-card">Loading...</div>
     </section>
+
+    <div id="sortWrapper" style="display: none;">
+      <select id="sortOption">
+        <option value="default">Sort by: Default</option>
+        <option value="alphabetical">Alphabetical</option>
+        <option value="rating">Rating</option>
+        <option value="distance">Distance</option>
+      </select>
+    </div>
 
     <div id="skipButtons" style="display: none; margin: 20px;">
       <button onclick="scrollToParks()">Skip to Parks</button>
