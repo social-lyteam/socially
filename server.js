@@ -198,7 +198,7 @@ app.get('/api/events', async (req, res) => {
 
   try {
     // 1. Ticketmaster
-    const tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&city=${encodeURIComponent(city)}&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
+    const tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&latlong=40.7128,-74.0060&radius=50&unit=miles&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
     const tmRes = await fetch(tmUrl);
     const tmData = await tmRes.json();
     console.log('Ticketmaster response:', JSON.stringify(tmData, null, 2));
