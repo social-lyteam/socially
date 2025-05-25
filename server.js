@@ -205,7 +205,7 @@ app.get('/api/events', async (req, res) => {
     const { data: customEvents, error } = await supabase
       .from('custom_events')
       .select('*')
-      .ilike('city', `%${city}%`)
+      .ilike('city', `%${city.split(',')[0].trim()}%`)
       .eq('date', date);
 
     if (error) {

@@ -209,6 +209,7 @@ async function searchEvents() {
     // Render Events
     resultsDiv.innerHTML = "<h2>Events:</h2>";
     if (eventsData.events && eventsData.events.length > 0) {
+      latestEvents = eventsData.events;  // ✅ This is required
       eventsData.events.forEach((event, index) => {
         const el = document.createElement('div');
         el.className = 'event-card';
