@@ -207,10 +207,11 @@ app.get('/api/events', async (req, res) => {
 
     const ebRes = await fetch(eventbriteUrl, {
       headers: {
-        'Authorization': `Bearer YOUR_EVENTBRITE_TOKEN`
+        'Authorization': `Bearer ${YOUR_EVENTBRITE_TOKEN}`
       }
     });
     const ebData = await ebRes.json();
+    console.log('Eventbrite response:', ebData);
 
     const eventbriteEvents = (ebData.events || []).map(event => ({
       name: event.name.text,
