@@ -212,7 +212,7 @@ async function searchEvents() {
       latestEvents = eventsData.events;  // ✅ This is required
       eventsData.events.forEach((event, index) => {
         const el = document.createElement('div');
-        el.className = 'event-card';
+        el.className = 'event-card' + (event.source === 'User' ? ' user-event' : '');
         el.innerHTML = `
           <img src="${event.image}" alt="${event.name}" />
           <strong>${event.name}</strong><br/>

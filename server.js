@@ -14,6 +14,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const TICKETMASTER_API_KEY = 'mPLzpIXal7XLK2mMxFTQgaPOEQMiGRAY';
+const YOUR_EVENTBRITE_TOKEN = 'XI6QKNIQINFRD2XBTR'
 const GOOGLE_PLACES_API_KEY = 'AIzaSyA42IF4OTsvdq0kaUiaCxxqLXqPgEECcng';
 
 app.use(cors());
@@ -201,6 +202,25 @@ app.get('/api/events', async (req, res) => {
       source: 'Ticketmaster'
     }));
 
+    // 3. Eventbrite Events
+    const eventbriteUrl = `https://www.eventbriteapi.com/v3/events/search/?location.address=${encodeURIComponent(city)}&start_date.range_start=${date}T00:00:00Z&start_date.range_end=${date}T23:59:59Z&expand=venue`;
+
+    const ebRes = await fetch(eventbriteUrl, {
+      headers: {
+        'Authorization': `Bearer YOUR_EVENTBRITE_TOKEN`
+      }
+    });
+    const ebData = await ebRes.json();
+
+    const eventbriteEvents = (ebData.events || []).map(event => ({
+      name: event.name.text,
+      date: event.start.local.split('T')[0],
+      venue: event.venue?.name || '',
+      url: event.url,
+      image: event.logo?.url || 'https://placehold.co/300x200?text=No+Image',
+      source: 'Eventbrite'
+    }));
+
     // 2. User-Created Events (from Supabase)
     const { data: customEvents, error } = await supabase
       .from('custom_events')
@@ -213,7 +233,7 @@ app.get('/api/events', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    res.json({ events: [...ticketmasterEvents, ...(customEvents || [])] });
+    res.json({ events: [...ticketmasterEvents, ...eventbriteEvents, ...(customEvents || [])] });
 
   } catch (err) {
     console.error('Error fetching events:', err);

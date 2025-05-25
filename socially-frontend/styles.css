@@ -265,6 +265,13 @@ button:hover, .footer-button:hover {
   margin-bottom: 10px;
 }
 
+.user-event {
+  background-color: #6dd5fa;
+  border-left: 4px solid #3399ff;
+  padding: 10px;
+  border-radius: 8px;
+}
+
 /* Skip + Back Buttons */
 #skipButtons {
   display: flex;
