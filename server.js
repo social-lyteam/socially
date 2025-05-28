@@ -3,6 +3,8 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
+const NodeCache = require('node-cache');
+const cache = new NodeCache({ stdTTL: 900 });
 
 const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
@@ -218,109 +220,114 @@ app.get('/api/friends', async (req, res) => {
   res.json({ friends: data.map(f => f.friend_email) });
 });
 
+async function fetchAllEvents(city, date) {
+  // 1. Ticketmaster Events
+  const tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&city=${encodeURIComponent(city)}&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
+  const tmRes = await fetch(tmUrl);
+  const tmData = await tmRes.json();
+  const ticketmasterEvents = (tmData._embedded?.events || []).map(event => ({
+    name: event.name,
+    date: event.dates?.start?.localDate || '',
+    venue: event._embedded?.venues?.[0]?.name || '',
+    url: event.url,
+    image: event.images?.[0]?.url || '',
+    source: 'Ticketmaster'
+  }));
+
+  // 2. PredictHQ
+  const phqRes = await fetch(
+    `https://api.predicthq.com/v1/events/?q=${encodeURIComponent(city)}&start.gte=${date}T00:00:00Z&start.lt=${date}T23:59:59Z&limit=20&category=concerts,festivals,expos,conferences,sports,performing-arts,community`,
+    {
+      headers: {
+        Authorization: `Bearer ${PREDICTHQ_ACCESS_TOKEN}`
+      }
+    }
+  );
+  const phqData = await phqRes.json();
+  const predictHQEvents = (phqData.results || []).map(event => {
+    const category = event.category || 'other';
+    function getPredictHQImage(category) {
+      switch (category) {
+        case 'concerts':
+        case 'performances':
+          return 'https://images.unsplash.com/photo-1507874457470-272b3c8d8ee2?w=800&q=80';
+        case 'sports':
+          return 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800&q=80';
+        case 'conferences':
+          return 'https://images.unsplash.com/photo-1581090700227-1e8e8b7ba8d3?w=800&q=80';
+        case 'festivals':
+          return 'https://images.unsplash.com/photo-1508606572321-901ea443707f?w=800&q=80';
+        case 'expos':
+          return 'https://images.unsplash.com/photo-1581092787765-82ddee7c1f5e?w=800&q=80';
+        case 'community':
+          return 'https://images.unsplash.com/photo-1585314061377-f04aa508a96e?w=800&q=80';
+        case 'observances':
+        case 'school-holidays':
+          return 'https://images.unsplash.com/photo-1530077564400-7c5f28f7b3fa?w=800&q=80';
+        case 'weather':
+          return 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80';
+        default:
+          return 'https://images.unsplash.com/photo-1472653431158-6364773b2a56?w=800&q=80';
+      }
+    }
+
+    return {
+      name: event.title,
+      date: event.start.split('T')[0],
+      venue: event.entities?.[0]?.name || '',
+      url: `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.location?.[0])}`,
+      image: getPredictHQImage(event.category),
+      source: 'PredictHQ'
+    };
+  });
+
+  // 3. Eventbrite
+  const ebUrl = `https://www.eventbriteapi.com/v3/events/search/?location.address=${encodeURIComponent(city)}&start_date.range_start=${date}T00:00:00Z&start_date.range_end=${date}T23:59:59Z&expand=venue`;
+  const ebRes = await fetch(ebUrl, {
+    headers: { Authorization: `Bearer ${YOUR_EVENTBRITE_TOKEN}` }
+  });
+  const ebData = await ebRes.json();
+  const eventbriteEvents = (ebData.events || []).map(event => ({
+    name: event.name.text,
+    date: event.start.local.split('T')[0],
+    venue: event.venue?.name || '',
+    url: event.url,
+    image: event.logo?.url || 'https://placehold.co/300x200?text=No+Image',
+    source: 'Eventbrite'
+  }));
+
+  // 4. User-created
+  const { data: customEvents, error } = await supabase
+    .from('custom_events')
+    .select('*')
+    .ilike('city', `%${city.split(',')[0].trim()}%`)
+    .eq('date', date);
+
+  if (error) throw new Error(error.message);
+
+  return shuffleArray([
+    ...ticketmasterEvents,
+    ...predictHQEvents,
+    ...eventbriteEvents,
+    ...(customEvents || [])
+  ]);
+}
+
 app.get('/api/events', async (req, res) => {
   const { city, date } = req.query;
   if (!city || !date) return res.status(400).json({ error: 'Missing city or date' });
 
+  const cacheKey = `${city}-${date}`;
+  let cached = cache.get(cacheKey);
+
+  if (cached) {
+    return res.json({ events: cached });
+  }
+
   try {
-    // 1. Ticketmaster Events
-    const tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&city=${encodeURIComponent(city)}&startDateTime=${date}T00:00:00Z&endDateTime=${date}T23:59:59Z`;
-    const tmRes = await fetch(tmUrl);
-    const tmData = await tmRes.json();
-    const ticketmasterEvents = (tmData._embedded?.events || []).map(event => ({
-      name: event.name,
-      date: event.dates?.start?.localDate || '',
-      venue: event._embedded?.venues?.[0]?.name || '',
-      url: event.url,
-      image: event.images?.[0]?.url || '',
-      source: 'Ticketmaster'
-    }));
-
-    // 2. PredictHQ
-    const phqRes = await fetch(
-      `https://api.predicthq.com/v1/events/?q=${encodeURIComponent(city)}&start.gte=${date}T00:00:00Z&start.lt=${date}T23:59:59Z&limit=20&category=concerts,festivals,expos,conferences,sports,performing-arts,community`,
-      {
-        headers: {
-          Authorization: `Bearer ${PREDICTHQ_ACCESS_TOKEN}`
-        }
-      }
-    );
-
-    const phqData = await phqRes.json();
-    const predictHQEvents = (phqData.results || []).map(event => {
-      const category = event.category || 'other';
-
-      function getPredictHQImage(category) {
-        switch (category) {
-          case 'concerts':
-          case 'performances':
-            return 'https://images.unsplash.com/photo-1507874457470-272b3c8d8ee2?w=800&q=80'; // concert
-          case 'sports':
-            return 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800&q=80'; // sports
-          case 'conferences':
-            return 'https://images.unsplash.com/photo-1581090700227-1e8e8b7ba8d3?w=800&q=80'; // conference
-          case 'festivals':
-            return 'https://images.unsplash.com/photo-1508606572321-901ea443707f?w=800&q=80'; // festival
-          case 'expos':
-            return 'https://images.unsplash.com/photo-1581092787765-82ddee7c1f5e?w=800&q=80'; // expo
-         case 'community':
-            return 'https://images.unsplash.com/photo-1585314061377-f04aa508a96e?w=800&q=80'; // community
-          case 'observances':
-          case 'school-holidays':
-           return 'https://images.unsplash.com/photo-1530077564400-7c5f28f7b3fa?w=800&q=80'; // holiday
-          case 'weather':
-            return 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80'; // weather alert
-          default:
-            return 'https://images.unsplash.com/photo-1472653431158-6364773b2a56?w=800&q=80'; // generic
-       }
-      }
-
-      return {
-        name: event.title,
-        date: event.start.split('T')[0],
-        venue: event.entities?.[0]?.name || '',
-        url: `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.location?.[0])}`,
-        image: getPredictHQImage(event.category),
-        source: 'PredictHQ'
-     };
-    });
-
-    // 3. Eventbrite
-    const ebUrl = `https://www.eventbriteapi.com/v3/events/search/?location.address=${encodeURIComponent(city)}&start_date.range_start=${date}T00:00:00Z&start_date.range_end=${date}T23:59:59Z&expand=venue`;
-    const ebRes = await fetch(ebUrl, {
-      headers: { Authorization: `Bearer ${YOUR_EVENTBRITE_TOKEN}` }
-    });
-    const ebData = await ebRes.json();
-    const eventbriteEvents = (ebData.events || []).map(event => ({
-      name: event.name.text,
-      date: event.start.local.split('T')[0],
-      venue: event.venue?.name || '',
-      url: event.url,
-      image: event.logo?.url || 'https://placehold.co/300x200?text=No+Image',
-      source: 'Eventbrite'
-    }));
-
-    // 4. AllEvents
-
-
-    // 5. User-created
-    const { data: customEvents, error } = await supabase
-      .from('custom_events')
-      .select('*')
-      .ilike('city', `%${city.split(',')[0].trim()}%`)
-      .eq('date', date);
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    const allEvents = shuffleArray([
-      ...ticketmasterEvents,
-      ...predictHQEvents,
-      ...eventbriteEvents,
-      ...(customEvents || [])
-    ]);
-
+    const allEvents = await fetchAllEvents(city, date);
+    cache.set(cacheKey, allEvents);
     res.json({ events: allEvents });
-
   } catch (err) {
     console.error('Error fetching events:', err);
     res.status(500).json({ error: 'Error fetching events' });
