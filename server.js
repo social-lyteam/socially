@@ -1,11 +1,11 @@
-const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch');
-const multer = require('multer');
-const { createClient } = require('@supabase/supabase-js');
-const NodeCache = require('node-cache');
-const cache = new NodeCache({ stdTTL: 900 });
+import express from 'express';
+import cors from 'cors';
+import fetch from 'node-fetch';
+import multer from 'multer';
+import { createClient } from '@supabase/supabase-js';
+import NodeCache from 'node-cache';
 
+const cache = new NodeCache({ stdTTL: 900 });
 const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
 const PORT = process.env.PORT || 3000;
