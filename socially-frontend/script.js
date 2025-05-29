@@ -1,6 +1,7 @@
 let favorites = [];
 let favoritePlaces = [];
 let latestEvents = [];
+let latestPlaces = { parks: [], restaurantsAndBars: [], activities: [] };
 let userCoords = null; // Stores current location
 
 function scrollToTop() {
@@ -193,7 +194,9 @@ async function searchEvents() {
   const date = datetimeInput;
 
   const resultsDiv = document.getElementById('results');
-  resultsDiv.innerHTML = "<h2>Searching...</h2>";
+  document.getElementById('searchingSpinner').style.display = 'block';
+  resultsDiv.innerHTML = ""; // Clear old content
+
 
   try {
     const eventsRes = await fetch(`https://socially-1-rm6w.onrender.com/api/events?city=${encodeURIComponent(location)}&date=${date}`);
@@ -201,6 +204,7 @@ async function searchEvents() {
 
     const placesRes = await fetch(`https://socially-1-rm6w.onrender.com/api/places?city=${encodeURIComponent(location)}&datetime=${encodeURIComponent(date)}`);
     const placesData = await placesRes.json();
+    latestPlaces = placesData.places;
 
     document.getElementById('skipButtons').style.display = 'block';
 
@@ -242,26 +246,6 @@ async function searchEvents() {
     const sortedEats = sortPlaces(restaurantsAndBars, sortOption);
     const sortedActivities = sortPlaces(activities, sortOption);
 
-    resultsDiv.innerHTML += `<div id="parks-section"><h2>Parks</h2></div>`;
-    sortedParks.forEach(place => {
-      const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
-      const distanceText = (userCoords && sortOption === 'distance' && place.lat && place.lng)
-        ? `<br/><small>📍 ${calculateDistance(userCoords.lat, userCoords.lng, place.lat, place.lng).toFixed(1)} km away</small>`
-        : '';
-      const el = document.createElement('div');
-      el.className = 'place-card';
-      el.innerHTML = `
-        <img src="${place.photo}" alt="${place.name}" />
-        <strong>${place.name}</strong><br/>
-        ${place.address}<br/>
-        ${place.rating ? `⭐ ${place.rating}` : ""}${distanceText}<br/>
-        <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
-        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
-      `;
-
-      document.getElementById('parks-section').appendChild(el);
-    });
-
     resultsDiv.innerHTML += `<div id="eats-section"><h2>Restaurants & Bars</h2></div>`;
     sortedEats.forEach(place => {
       const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
@@ -301,6 +285,28 @@ async function searchEvents() {
 
       document.getElementById('activities-section').appendChild(el);
     });
+
+    resultsDiv.innerHTML += `<div id="parks-section"><h2>Parks</h2></div>`;
+    sortedParks.forEach(place => {
+      const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+      const distanceText = (userCoords && sortOption === 'distance' && place.lat && place.lng)
+        ? `<br/><small>📍 ${calculateDistance(userCoords.lat, userCoords.lng, place.lat, place.lng).toFixed(1)} km away</small>`
+        : '';
+      const el = document.createElement('div');
+      el.className = 'place-card';
+      el.innerHTML = `
+        <img src="${place.photo}" alt="${place.name}" />
+        <strong>${place.name}</strong><br/>
+        ${place.address}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}${distanceText}<br/>
+        <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
+        <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+      `;
+
+      document.getElementById('parks-section').appendChild(el);
+    });
+
+    document.getElementById('searchingSpinner').style.display = 'none';
 
   } catch (err) {
     console.error("Error fetching data:", err);
@@ -708,3 +714,134 @@ window.onclick = function(event) {
     }
   }
 }});
+
+function getRandomItem(array) {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+async function generateDateNight() {
+  const includeEvents = document.getElementById('includeEvents')?.checked;
+  const includeRestaurants = document.getElementById('includeRestaurants')?.checked;
+  const includeActivities = document.getElementById('includeActivities')?.checked;
+  const includeParks = document.getElementById('includeParks')?.checked;
+
+  const city = document.getElementById('city')?.value.trim();
+  const state = document.getElementById('state')?.value.trim();
+  const date = document.getElementById('datetime')?.value;
+
+  if (!city || !state || !date) {
+    alert("Please fill in the date, city, and state.");
+    return;
+  }
+
+  if (!includeEvents && !includeRestaurants && !includeActivities && !includeParks) {
+    alert("Please select at least one category.");
+    return;
+  }
+
+  const location = `${city}, ${state}`;
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = '<h2>Your Date Night Plan:</h2>';
+  resultsDiv.innerHTML = `
+    <div class="spinner">
+      <div class="loader"></div>
+    </div>
+    <p style="text-align:center; font-size:1.2em;">Searching for results...</p>
+  `;
+
+  try {
+    let eventData = [], placeData = {};
+    if (includeEvents) {
+      const eventsRes = await fetch(`https://socially-1-rm6w.onrender.com/api/events?city=${encodeURIComponent(location)}&date=${date}`);
+      const eventsJson = await eventsRes.json();
+      latestEvents = eventsJson.events || [];
+      eventData = latestEvents;
+    }
+
+    if (includeRestaurants || includeActivities || includeParks) {
+      const placesRes = await fetch(`https://socially-1-rm6w.onrender.com/api/places?city=${encodeURIComponent(location)}&datetime=${date}`);
+      const placesJson = await placesRes.json();
+      latestPlaces = placesJson.places || {};
+    }
+
+    const selected = [];
+
+    if (includeEvents && eventData.length > 0)
+      selected.push({ type: 'Event', item: getRandomItem(eventData) });
+
+    if (includeRestaurants && latestPlaces.restaurantsAndBars?.length > 0)
+      selected.push({ type: 'Restaurant/Bar', item: getRandomItem(latestPlaces.restaurantsAndBars) });
+
+    if (includeActivities && latestPlaces.activities?.length > 0)
+      selected.push({ type: 'Activity', item: getRandomItem(latestPlaces.activities) });
+
+    if (includeParks && latestPlaces.parks?.length > 0)
+      selected.push({ type: 'Park', item: getRandomItem(latestPlaces.parks) });
+
+    if (selected.length === 0) {
+      resultsDiv.innerHTML = '<h2>Your Date Night Plan:</h2><p>No results found for selected categories.</p>';
+      return;
+    }
+
+    // Render cards
+    resultsDiv.innerHTML = '<h2>Your Date Night Plan:</h2>';
+
+    selected.forEach(({ type, item }) => {
+      const label = document.createElement('h3');
+      label.textContent = type;
+      resultsDiv.appendChild(label);
+
+      if (type === 'Event') {
+        renderEventCard(item, resultsDiv);
+      } else {
+        renderPlaceCard(item, resultsDiv);
+      }
+    });
+
+  } catch (err) {
+    console.error("Date Night Generator error:", err);
+    resultsDiv.innerHTML = "<p>Something went wrong. Please try again later.</p>";
+  }
+}
+
+function renderEventCard(event, parentEl) {
+  const el = document.createElement('div');
+  el.className = 'event-card' + (event.source === 'User' ? ' user-event' : '');
+  el.innerHTML = `
+    <img src="${event.image}" alt="${event.name}" />
+    <strong>${event.name}</strong><br/>
+    ${event.date}<br/>
+    ${event.venue}<br/>
+    <a href="${event.url}" target="_blank">View Event</a><br/>
+    <small>Source: ${event.source}</small><br/>
+    <button onclick="addToFavoritesFromIndex(${latestEvents.indexOf(event)})">❤️ Favorite</button>
+  `;
+
+  if (event.source === 'User') {
+    el.innerHTML += `
+      <button onclick="reportEvent('${event.name}', '${event.date}', '${event.venue}')">🚩 Report</button>
+    `;
+  }
+
+  parentEl.appendChild(el);
+}
+
+function renderPlaceCard(place, parentEl) {
+  const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+  const distanceText = (userCoords && place.lat && place.lng)
+    ? `<br/><small>📍 ${calculateDistance(userCoords.lat, userCoords.lng, place.lat, place.lng).toFixed(1)} km away</small>`
+    : '';
+
+  const el = document.createElement('div');
+  el.className = 'place-card';
+  el.innerHTML = `
+    <img src="${place.photo}" alt="${place.name}" />
+    <strong>${place.name}</strong><br/>
+    ${place.address}<br/>
+    ${place.rating ? `⭐ ${place.rating}` : ""}${distanceText}<br/>
+    <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
+    <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+  `;
+
+  parentEl.appendChild(el);
+}

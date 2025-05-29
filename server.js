@@ -1,8 +1,8 @@
-import express from 'express';
-import cors from 'cors';
-import fetch from 'node-fetch';
-import multer from 'multer';
-import { createClient } from '@supabase/supabase-js';
+const express = require('express');
+const cors = require('cors');
+const fetch = require('node-fetch');
+const multer = require('multer');
+const { createClient } = require('@supabase/supabase-js');
 const NodeCache = require('node-cache');
 const cache = new NodeCache({ stdTTL: 900 });
 
@@ -67,6 +67,24 @@ app.post('/api/custom-events', upload.single('image'), async (req, res) => {
     return res.status(400).json({ error: 'Missing fields' });
   }
 
+  // Save image to Supabase Storage
+  const { data: uploadData, error: uploadErr } = await supabase.storage
+    .from('event-images')
+    .upload(`${Date.now()}_${image.originalname}`, image.buffer, {
+      contentType: image.mimetype
+    });
+
+  if (uploadErr) return res.status(500).json({ error: uploadErr.message });
+
+  const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/event-images/${uploadData.path}`;
+  const eventData = { name, venue, city, state, date, url, image: imageUrl, source: 'User' };
+
+  const { error } = await supabase.from('custom_events').insert([{ email, ...eventData }]);
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ success: true });
+});
+
 app.post('/api/report', async (req, res) => {
   const { eventName, eventDate, eventVenue, reporterEmail } = req.body;
 
@@ -87,24 +105,6 @@ app.post('/api/report', async (req, res) => {
     .from('event_reports')
     .insert([{ event_name: eventName, event_date: eventDate, event_venue: eventVenue, reporter_email: reporterEmail || null }]);
 
-  if (error) return res.status(500).json({ error: error.message });
-
-  res.json({ success: true });
-});
-
-  // Save image to Supabase Storage
-  const { data: uploadData, error: uploadErr } = await supabase.storage
-    .from('event-images')
-    .upload(`${Date.now()}_${image.originalname}`, image.buffer, {
-      contentType: image.mimetype
-    });
-
-  if (uploadErr) return res.status(500).json({ error: uploadErr.message });
-
-  const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/event-images/${uploadData.path}`;
-  const eventData = { name, venue, city, state, date, url, image: imageUrl, source: 'User' };
-
-  const { error } = await supabase.from('custom_events').insert([{ email, ...eventData }]);
   if (error) return res.status(500).json({ error: error.message });
 
   res.json({ success: true });

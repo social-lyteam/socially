@@ -35,6 +35,16 @@
       <input type="text" id="state" placeholder="State/Province/Country" />
       <button onclick="useCurrentLocation()">📍 Use My Location</button>
       <button onclick="searchEvents()">Search All</button>
+      <div id="dateNightSection">
+        <h3>Date Night Generator</h3>
+        <label><input type="checkbox" id="includeEvents" /> Events</label>
+        <label><input type="checkbox" id="includeRestaurants" /> Restaurants</label>
+        <label><input type="checkbox" id="includeActivities" /> Activities</label>
+        <label><input type="checkbox" id="includeParks" /> Parks</label>
+        <br />
+        <button onclick="generateDateNight()">🎲 Generate Date Night</button>
+        <div id="dateNightResults"></div>
+      </div>
     </section>
 
     <div id="createEventSection" style="display: none; padding: 1rem; max-width: 600px; margin: auto;">
@@ -88,6 +98,10 @@
       <button onclick="window.location.href='privacy.html'" class="footer-button">Privacy Policy</button>
       <button onclick="window.location.href='data-deletion.html'" class="footer-button">Data Deletion</button>
       <button onclick="window.location.href='terms.html'" class="footer-button">Terms of Service</button>
+    </footer>
+
+    <footer style="text-align: center; font-size: 0.8em; color: #888; margin-top: 40px;">
+      For business inquiries, including advertising and sponsorships, please contact us at <a href="mailto:support@sociallyevents.com">support@sociallyevents.com</a>
     </footer>
 
     <button id="backToTop" onclick="scrollToTop()">⬆️</button>

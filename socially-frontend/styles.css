@@ -107,6 +107,68 @@ body.dark-mode .tagline {
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
+#dateNightSection {
+  margin-top: 20px;
+  padding: 10px;
+  background: #cf74a6;
+  border-radius: 8px;
+}
+
+#dateNightSection h3 {
+  margin-top: 0;
+}
+
+#dateNightSection label {
+  margin-right: 10px;
+}
+
+/* Base style */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #fff;
+  border: 2px solid #ccc;
+  padding: 6px;
+  border-radius: 5px;
+  display: inline-block;
+  position: relative;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+/* When checked */
+input[type="checkbox"]:checked {
+  background-color: #ff4081; /* Accent pink color */
+  border-color: #ff4081;
+}
+
+/* Checkmark using pseudo-element */
+input[type="checkbox"]:checked::after {
+  content: '✔';
+  position: absolute;
+  top: 0;
+  left: 3px;
+  color: white;
+  font-size: 16px;
+}
+
+/* Add some spacing for labels */
+#dateNightSection label {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 15px;
+  font-size: 1rem;
+  color: #333;
+  gap: 6px;
+}
+
+input[type="checkbox"] {
+  touch-action: manipulation;
+}
+
 #sortOption {
   padding: 8px 12px;
   font-size: 16px;
@@ -330,6 +392,27 @@ footer {
   }
 }
 
+.spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
+}
+
+.loader {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid #ff4081; /* Pink accent color */
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Dark Mode */
 body.dark-mode {
   background: #0b1c2c; /* Dark navy background */
@@ -339,6 +422,16 @@ body.dark-mode {
 body.dark-mode header {
   background: #092030; /* Slightly darker navy for header */
   color: #000000;
+}
+
+.dark-mode input[type="checkbox"] {
+  background-color: #333;
+  border-color: #777;
+}
+
+.dark-mode input[type="checkbox"]:checked {
+  background-color: #ff4081;
+  border-color: #ff4081;
 }
 
 body.dark-mode .event-card,
