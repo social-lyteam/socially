@@ -35,6 +35,9 @@
       <input type="text" id="state" placeholder="State/Province/Country" />
       <button onclick="useCurrentLocation()">📍 Use My Location</button>
       <button onclick="searchEvents()">Search All</button>
+      <div id="loadingSpinner" class="loading-overlay" style="display: none;">
+        <div class="loader"></div>
+      </div>
       <div id="dateNightSection">
         <h3>Date Night Generator</h3>
         <label><input type="checkbox" id="includeEvents" /> Events</label>

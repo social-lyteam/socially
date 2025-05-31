@@ -194,9 +194,9 @@ async function searchEvents() {
   const date = datetimeInput;
 
   const resultsDiv = document.getElementById('results');
-  document.getElementById('searchingSpinner').style.display = 'block';
+  const loadingSpinner = document.getElementById('loadingSpinner');
+  if (loadingSpinner) loadingSpinner.style.display = 'block';
   resultsDiv.innerHTML = ""; // Clear old content
-
 
   try {
     const eventsRes = await fetch(`https://socially-1-rm6w.onrender.com/api/events?city=${encodeURIComponent(location)}&date=${date}`);
@@ -263,7 +263,8 @@ async function searchEvents() {
         <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
       `;
 
-      document.getElementById('eats-section').appendChild(el);
+      const eatsEl = document.getElementById('eats-section');
+      if (eatsEl) eatsEl.appendChild(el);
     });
 
     resultsDiv.innerHTML += `<div id="activities-section"><h2>Things to Do</h2></div>`;
@@ -283,7 +284,8 @@ async function searchEvents() {
         <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
       `;
 
-      document.getElementById('activities-section').appendChild(el);
+      const activitiesEl = document.getElementById('activities-section');
+      if (activitiesEl) activitiesEl.appendChild(el);
     });
 
     resultsDiv.innerHTML += `<div id="parks-section"><h2>Parks</h2></div>`;
@@ -303,14 +305,17 @@ async function searchEvents() {
         <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
       `;
 
-      document.getElementById('parks-section').appendChild(el);
+      const parksEl = document.getElementById('parks-section');
+      if (parksEl) parksEl.appendChild(el);
     });
 
-    document.getElementById('searchingSpinner').style.display = 'none';
+    if (loadingSpinner) loadingSpinner.style.display = 'none';
 
   } catch (err) {
     console.error("Error fetching data:", err);
     resultsDiv.innerHTML = "<h2>Something went wrong. Please try again later.</h2>";
+    if (loadingSpinner) loadingSpinner.style.display = 'none';
+    document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
   }
 }
 
@@ -743,10 +748,10 @@ async function generateDateNight() {
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = '<h2>Your Date Night Plan:</h2>';
   resultsDiv.innerHTML = `
-    <div class="spinner">
-      <div class="loader"></div>
+    <div id="dateNightLoader" style="text-align:center;">
+      <div class="spinner"><div class="loader"></div></div>
+      <p style="font-size:1.2em;">Searching for results...</p>
     </div>
-    <p style="text-align:center; font-size:1.2em;">Searching for results...</p>
   `;
 
   try {
@@ -844,4 +849,8 @@ function renderPlaceCard(place, parentEl) {
   `;
 
   parentEl.appendChild(el);
+
+  // 👉 Scroll to results
+document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
+
 }

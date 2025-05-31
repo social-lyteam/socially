@@ -107,6 +107,28 @@ body.dark-mode .tagline {
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
+.loading-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 20px 0;
+}
+
+.loader {
+  border: 6px solid #e0f3ff;
+  border-top: 6px solid #009dff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 #dateNightSection {
   margin-top: 20px;
   padding: 10px;
@@ -120,6 +142,22 @@ body.dark-mode .tagline {
 
 #dateNightSection label {
   margin-right: 10px;
+}
+
+#loadingSpinner {
+  text-align: center;
+  margin: 20px 0;
+}
+
+#loadingSpinner img {
+  width: 50px;
+  height: 50px;
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Base style */
@@ -167,6 +205,16 @@ input[type="checkbox"]:checked::after {
 
 input[type="checkbox"] {
   touch-action: manipulation;
+}
+
+#loadingSpinner img {
+  animation: spin 1s linear infinite;
+  filter: brightness(0) invert(1); /* makes it white if the spinner is black */
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 #sortOption {
