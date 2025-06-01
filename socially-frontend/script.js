@@ -110,40 +110,42 @@ function handleAuthClick() {
   }
 }
 
-function useCurrentLocation() {
+ async function useCurrentLocation() {
   if (!navigator.geolocation) {
     alert("Geolocation is not supported by your browser.");
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(async (position) => {
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
 
-    userCoords = { lat, lng }; // Save for distance sorting
+      userCoords = { lat, lng }; // Save for distance sorting
 
-    try {
-      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyCizgS1pEV6oYt2LLXzJqaIzKJrql9kUjE`);
-      const data = await response.json();
+      try {
+        const res = await fetch(`https://yourdomain.com/api/reverse-geocode?lat=${lat}&lng=${lng}`);
+        const data = await res.json();
 
-      const location = data.results[0]?.address_components;
-      if (!location) {
-        alert("Could not determine your location.");
-        return;
+        if (data.city && data.state) {
+          document.getElementById("city").value = data.city;
+          document.getElementById("state").value = data.state;
+        } else {
+          alert("Could not determine your location.");
+        }
+      } catch (err) {
+        alert("Error fetching location details.");
+        console.error(err);
       }
-
-      const cityObj = location.find(c => c.types.includes("locality") || c.types.includes("postal_town"));
-      const stateObj = location.find(c => c.types.includes("administrative_area_level_1") || c.types.includes("country"));
-
-      document.getElementById('city').value = cityObj?.long_name || '';
-      document.getElementById('state').value = stateObj?.long_name || '';
-    } catch (err) {
-      console.error("Geocoding failed:", err);
-      alert("Failed to get location details.");
+    },
+    (error) => {
+      if (error.code === error.PERMISSION_DENIED) {
+        alert("Location access denied. Please enable it in your browser settings.");
+      } else {
+        alert("Unable to retrieve your location.");
+      }
     }
-  }, () => {
-    alert("Failed to get your location.");
-  });
+  );
 }
 
 function calculateDistance(lat1, lon1, lat2, lon2) {

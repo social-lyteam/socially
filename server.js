@@ -404,6 +404,30 @@ app.get('/api/places', async (req, res) => {
   }
 });
 
+app.get('/api/reverse-geocode', async (req, res) => {
+  const { lat, lng } = req.query;
+
+  if (!lat || !lng) return res.status(400).json({ error: 'Missing lat or lng' });
+
+  try {
+    const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_PLACES_API_KEY}`);
+    const geoData = await geoRes.json();
+
+    if (!geoData.results || geoData.results.length === 0) {
+      return res.status(400).json({ error: 'No location found' });
+    }
+
+    const components = geoData.results[0].address_components;
+    const city = components.find(c => c.types.includes("locality"))?.long_name || '';
+    const state = components.find(c => c.types.includes("administrative_area_level_1") || c.types.includes("country"))?.long_name || '';
+
+    res.json({ city, state });
+  } catch (err) {
+    console.error('Geocode error:', err);
+    res.status(500).json({ error: 'Failed to geocode' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
