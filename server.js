@@ -21,7 +21,11 @@ const GOOGLE_PLACES_API_KEY = 'AIzaSyBN3SiaU7KOSiL9Cc3xgv8YY-HtL1_msWM';
 const PREDICTHQ_ACCESS_TOKEN = '-86fLNgbsEBmcDZR33fE-6tccuaHCbIx3qn0gfK9';
 const ALLEVENTS_ACCESS_KEY = 'Phoenix8898!'
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://sociallyevents.com',
+  methods: ['GET', 'POST', 'DELETE'],
+  credentials: true
+}));
 app.use(express.json());
 
 function shuffleArray(array) {
