@@ -123,7 +123,7 @@ function useCurrentLocation() {
     userCoords = { lat, lng }; // Save for distance sorting
 
     try {
-      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyA42IF4OTsvdq0kaUiaCxxqLXqPgEECcng`);
+      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyCizgS1pEV6oYt2LLXzJqaIzKJrql9kUjE`);
       const data = await response.json();
 
       const location = data.results[0]?.address_components;
