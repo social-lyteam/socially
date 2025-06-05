@@ -42,6 +42,7 @@
         <h3>Date Night Generator</h3>
         <label><input type="checkbox" id="includeEvents" /> Events</label>
         <label><input type="checkbox" id="includeRestaurants" /> Restaurants</label>
+        <label><input type="checkbox" id="includeBars" /> Bars</label>
         <label><input type="checkbox" id="includeActivities" /> Activities</label>
         <label><input type="checkbox" id="includeParks" /> Parks</label>
         <br />
@@ -91,7 +92,8 @@
 
     <div id="skipButtons" style="display: none; margin: 20px;">
       <button onclick="scrollToParks()">Skip to Parks</button>
-      <button onclick="scrollToEats()">Skip to Restaurants & Bars</button>
+      <button onclick="scrollToRestaurants()">Skip to Restaurants</button>
+      <button onclick="scrollToBars()">Skip to Bars</button>
       <button onclick="scrollToActivities()">Skip to Activities</button>
     </div>
 

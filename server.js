@@ -343,10 +343,11 @@ app.get('/api/places', async (req, res) => {
   if (!city || !datetime) return res.status(400).json({ error: 'Missing city or datetime' });
 
   try {
-    const restaurantBarTypes = ['restaurant', 'bar'];
+    const restaurantTypes = ['restaurant'];
+    const barTypes = ['bar']
     const activityKeywords = ['escape room', 'rage room', 'axe throwing', 'topgolf', 'arcade', 'bowling alley', 'comedy club', 'indoor golf', 'mini golf', 'laser tag', 'paintball', 'trampoline park', 'climbing gym'];
 
-    const allPlaces = { restaurantsAndBars: [], activities: [], parks: [] };
+    const allPlaces = { restaurants: [], bars: [], activities: [], parks: [] };
 
     const parkUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=park+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
     const parkRes = await fetch(parkUrl);
@@ -365,7 +366,26 @@ app.get('/api/places', async (req, res) => {
       }
     });
 
-    for (const type of restaurantBarTypes) {
+    for (const type of restaurantTypes) {
+      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${type}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
+      const resPlaces = await fetch(url);
+      const data = await resPlaces.json();
+      data.results?.forEach(p => {
+        if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
+          allPlaces.restaurantsAndBars.push({
+            name: p.name,
+            type,
+            address: p.formatted_address,
+            rating: p.rating,
+            lat: p.geometry?.location?.lat,
+            lng: p.geometry?.location?.lng,
+            photo: p.photos?.[0] ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}` : 'https://placehold.co/300x200?text=No+Image'
+          });
+        }
+      });
+    }
+
+    for (const type of barTypes) {
       const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${type}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
       const resPlaces = await fetch(url);
       const data = await resPlaces.json();

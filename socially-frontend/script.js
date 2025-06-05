@@ -1,7 +1,7 @@
 let favorites = [];
 let favoritePlaces = [];
 let latestEvents = [];
-let latestPlaces = { parks: [], restaurantsAndBars: [], activities: [] };
+let latestPlaces = { parks: [], restaurants: [], bars: [], activities: [] };
 let userCoords = null; // Stores current location
 
 function scrollToTop() {
@@ -13,9 +13,14 @@ function scrollToParks() {
   if (el) el.scrollIntoView({ behavior: 'smooth' });
 }
 
-function scrollToEats() {
-  const el = document.getElementById('eats-section');
+function scrollToRestaurants() {
+  const el = document.getElementById('Restaurants-section');
   if (el) el.scrollIntoView({ behavior: 'smooth' });
+}
+
+function scrollToBars() {
+  const el = document.getElementById('bars-section');
+  if (el) el.scrollIntoView({ behavior: 'smooth' })
 }
 
 function scrollToActivities() {
@@ -124,7 +129,7 @@ function handleAuthClick() {
       userCoords = { lat, lng }; // Save for distance sorting
 
       try {
-        const res = await fetch(`https://yourdomain.com/api/reverse-geocode?lat=${lat}&lng=${lng}`);
+        const res = await fetch(`https://socially-1-rm6w.onrender.com/api/reverse-geocode?lat=${lat}&lng=${lng}`);
         const data = await res.json();
 
         if (data.city && data.state) {
@@ -242,18 +247,40 @@ async function searchEvents() {
     }
 
     // Render Places
-    const { parks, restaurantsAndBars, activities } = placesData.places;
+    const { parks, restaurants, bars, activities } = placesData.places;
 
     const sortedParks = sortPlaces(parks, sortOption);
-    const sortedEats = sortPlaces(restaurantsAndBars, sortOption);
+    const sortedRestaurants = sortPlaces(restaurants, sortOption);
+    const sortedBars = sortPlaces(bars, sortOption);
     const sortedActivities = sortPlaces(activities, sortOption);
 
-    resultsDiv.innerHTML += `<div id="eats-section"><h2>Restaurants & Bars</h2></div>`;
-    sortedEats.forEach(place => {
+    // Restaurants Section
+    resultsDiv.innerHTML += `<div id="restaurants-section"><h2>Restaurants</h2></div>`;
+    sortedRestaurants.forEach(place => {
       const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
       const distanceText = (userCoords && sortOption === 'distance' && place.lat && place.lng)
         ? `<br/><small>📍 ${calculateDistance(userCoords.lat, userCoords.lng, place.lat, place.lng).toFixed(1)} km away</small>`
         : '';
+      const el = document.createElement('div');
+      el.className = 'place-card';
+      el.innerHTML = `
+       <img src="${place.photo}" alt="${place.name}" />
+       <strong>${place.name}</strong><br/>
+        ${place.address}<br/>
+        ${place.rating ? `⭐ ${place.rating}` : ""}${distanceText}<br/>
+       <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
+       <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
+     `;
+      document.getElementById('restaurants-section').appendChild(el);
+    });
+
+    // Bars Section
+    resultsDiv.innerHTML += `<div id="bars-section"><h2>Bars</h2></div>`;
+    sortedBars.forEach(place => {
+     const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.address)}`;
+     const distanceText = (userCoords && sortOption === 'distance' && place.lat && place.lng)
+       ? `<br/><small>📍 ${calculateDistance(userCoords.lat, userCoords.lng, place.lat, place.lng).toFixed(1)} km away</small>`
+       : '';
       const el = document.createElement('div');
       el.className = 'place-card';
       el.innerHTML = `
@@ -264,9 +291,7 @@ async function searchEvents() {
         <a href="${mapsLink}" target="_blank">View on Google Maps</a><br/>
         <button onclick='addPlaceToFavorites(${JSON.stringify(place).replace(/'/g, "\\'")})'>❤️ Favorite</button>
       `;
-
-      const eatsEl = document.getElementById('eats-section');
-      if (eatsEl) eatsEl.appendChild(el);
+      document.getElementById('bars-section').appendChild(el);
     });
 
     resultsDiv.innerHTML += `<div id="activities-section"><h2>Things to Do</h2></div>`;
@@ -729,6 +754,7 @@ function getRandomItem(array) {
 async function generateDateNight() {
   const includeEvents = document.getElementById('includeEvents')?.checked;
   const includeRestaurants = document.getElementById('includeRestaurants')?.checked;
+  const includeBars = document.getElementById('includeBars')?.checked;
   const includeActivities = document.getElementById('includeActivities')?.checked;
   const includeParks = document.getElementById('includeParks')?.checked;
 
@@ -741,7 +767,7 @@ async function generateDateNight() {
     return;
   }
 
-  if (!includeEvents && !includeRestaurants && !includeActivities && !includeParks) {
+  if (!includeEvents && !includeRestaurants && !includeBars && !includeActivities && !includeParks) {
     alert("Please select at least one category.");
     return;
   }
@@ -765,7 +791,7 @@ async function generateDateNight() {
       eventData = latestEvents;
     }
 
-    if (includeRestaurants || includeActivities || includeParks) {
+    if (includeRestaurants || includeBars || includeActivities || includeParks) {
       const placesRes = await fetch(`https://socially-1-rm6w.onrender.com/api/places?city=${encodeURIComponent(location)}&datetime=${date}`);
       const placesJson = await placesRes.json();
       latestPlaces = placesJson.places || {};
@@ -777,7 +803,10 @@ async function generateDateNight() {
       selected.push({ type: 'Event', item: getRandomItem(eventData) });
 
     if (includeRestaurants && latestPlaces.restaurantsAndBars?.length > 0)
-      selected.push({ type: 'Restaurant/Bar', item: getRandomItem(latestPlaces.restaurantsAndBars) });
+      selected.push({ type: 'Restaurant/Bar', item: getRandomItem(latestPlaces.restaurants) });
+
+    if (includeBars && latestPlaces.bars?.length > 0)
+      selected.push({ type: 'Bar', item: getRandomItem(latestPlaces.bars) });
 
     if (includeActivities && latestPlaces.activities?.length > 0)
       selected.push({ type: 'Activity', item: getRandomItem(latestPlaces.activities) });
