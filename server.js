@@ -372,7 +372,7 @@ app.get('/api/places', async (req, res) => {
       const data = await resPlaces.json();
       data.results?.forEach(p => {
         if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
-          allPlaces.restaurantsAndBars.push({
+          allPlaces.restaurants.push({
             name: p.name,
             type,
             address: p.formatted_address,
@@ -391,7 +391,7 @@ app.get('/api/places', async (req, res) => {
       const data = await resPlaces.json();
       data.results?.forEach(p => {
         if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
-          allPlaces.restaurantsAndBars.push({
+          allPlaces.bars.push({
             name: p.name,
             type,
             address: p.formatted_address,
