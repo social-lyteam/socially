@@ -370,6 +370,7 @@ app.get('/api/places', async (req, res) => {
       const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${type}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
       const resPlaces = await fetch(url);
       const data = await resPlaces.json();
+  
       data.results?.forEach(p => {
         if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
           allPlaces.restaurants.push({
@@ -379,7 +380,9 @@ app.get('/api/places', async (req, res) => {
             rating: p.rating,
             lat: p.geometry?.location?.lat,
             lng: p.geometry?.location?.lng,
-            photo: p.photos?.[0] ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}` : 'https://placehold.co/300x200?text=No+Image'
+            photo: p.photos?.[0]
+              ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
+              : 'https://placehold.co/300x200?text=No+Image'
           });
         }
       });
@@ -389,8 +392,9 @@ app.get('/api/places', async (req, res) => {
       const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${type}+in+${encodeURIComponent(city)}&key=${GOOGLE_PLACES_API_KEY}`;
       const resPlaces = await fetch(url);
       const data = await resPlaces.json();
+
       data.results?.forEach(p => {
-        if (!p.name.toLowerCase().includes('gas station') && !p.name.toLowerCase().includes('fast food')) {
+        if (!p.name.toLowerCase().includes('restaurant') && !p.name.toLowerCase().includes('grill')) {  // Optional: filter out food-leaning bars
           allPlaces.bars.push({
             name: p.name,
             type,
@@ -398,7 +402,9 @@ app.get('/api/places', async (req, res) => {
             rating: p.rating,
             lat: p.geometry?.location?.lat,
             lng: p.geometry?.location?.lng,
-            photo: p.photos?.[0] ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}` : 'https://placehold.co/300x200?text=No+Image'
+            photo: p.photos?.[0]
+              ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${p.photos[0].photo_reference}&key=${GOOGLE_PLACES_API_KEY}`
+              : 'https://placehold.co/300x200?text=No+Image'
           });
         }
       });

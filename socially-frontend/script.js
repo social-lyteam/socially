@@ -783,7 +783,7 @@ async function generateDateNight() {
   `;
 
   try {
-    let eventData = [], placeData = {};
+    let eventData = [], placesData = {};
     if (includeEvents) {
       const eventsRes = await fetch(`https://socially-1-rm6w.onrender.com/api/events?city=${encodeURIComponent(location)}&date=${date}`);
       const eventsJson = await eventsRes.json();
@@ -802,8 +802,8 @@ async function generateDateNight() {
     if (includeEvents && eventData.length > 0)
       selected.push({ type: 'Event', item: getRandomItem(eventData) });
 
-    if (includeRestaurants && latestPlaces.restaurantsAndBars?.length > 0)
-      selected.push({ type: 'Restaurant/Bar', item: getRandomItem(latestPlaces.restaurants) });
+    if (includeRestaurants && latestPlaces.restaurants.length > 0)
+      selected.push({ type: 'Restaurant', item: getRandomItem(latestPlaces.restaurants) });
 
     if (includeBars && latestPlaces.bars?.length > 0)
       selected.push({ type: 'Bar', item: getRandomItem(latestPlaces.bars) });
